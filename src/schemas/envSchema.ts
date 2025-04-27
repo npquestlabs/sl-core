@@ -14,4 +14,7 @@ export default z.object({
   databaseUrl: z.string({
     required_error: 'DATABASE URL is Mandatory',
   }),
+  jwtSecret: z.string({
+    required_error: 'JWT SECRET is Mandatory',
+  }),
 })
