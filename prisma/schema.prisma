@@ -1,43 +1,311 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id         Int       @id @default(autoincrement())
-  email      String    @unique
-  userId     String?   @unique
-  firstName  String?
-  lastName   String?
-  birthDay   DateTime?
-  phone      String    @unique
-  bloodGroup String
-  isActive   Boolean
-  isVerified Boolean   @default(false)
-  address    Address[]
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  landlordId String? @map("landlord_id") @db.Uuid
+  tenantId   String? @map("tenant_id") @db.Uuid
+  vendorId   String? @map("vendor_id") @db.Uuid
+
+  landlord Landlord? @relation(fields: [landlordId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendor   Vendor?   @relation(fields: [vendorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  notifications Notification[]
+
+  @@index([landlordId], map: "users_idx_landlord_id")
+  @@index([tenantId], map: "users_idx_tenant_id")
+  @@index([vendorId], map: "users_idx_vendor_id")
+  @@map("users")
 }
 
-model Address {
-  id            Int      @id @default(autoincrement())
-  pinCode       Int
-  addressLine1  String
-  addressLine2  String?
-  city          String
-  state         String
-  country       String
-  isPrimary     Boolean  @default(false)
-  isResidential Boolean  @default(false)
-  isPermanent   Boolean  @default(false)
-  user          User     @relation(fields: [id], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model Complex {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  landlordId  String  @map("landlord_id") @db.Uuid
+  name        String  @db.VarChar(255)
+  countryCode String  @map("country_code") @db.Char(3)
+  cityName    String  @map("city_name")
+  street      String?
+  address     String?
+  description String?
+  notes       String?
+  createdAt   DateTime? @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime? @map("updated_at") @updatedAt @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  landlord Landlord @relation(fields: [landlordId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  units    Unit[]
+
+  @@index([landlordId], map: "complexes_idx_landlord_id")
+  @@map("complexes")
+}
+
+model Landlord {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  firstName          String   @map("first_name") @db.VarChar(255)
+  lastName           String   @map("last_name") @db.VarChar(255)
+  email              String   @unique @db.VarChar(255)
+  phone              String   @unique @db.VarChar(50)
+  passwordHash       String   @map("password_hash")
+  idType             IdType?  @map("id_type")
+  idNumber           String?  @map("id_number") @unique @db.VarChar(100)
+  idDocumentUrl      String?  @map("id_document_url")
+  isVerified         Boolean? @map("is_verified") @default(false)
+  proofOfOwnership   String?  @map("proof_of_ownership")
+  bankName           String?  @map("bank_name") @db.VarChar(100)
+  bankAccount        String?  @map("bank_account") @db.VarChar(100)
+  mobileMoneyNumber  String?  @map("mobile_money_number") @db.VarChar(50)
+  notificationPrefs  String?  @map("notification_prefs") @db.VarChar(255)
+  createdAt          DateTime? @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime? @map("updated_at") @updatedAt @db.Timestamptz(6)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  user        User[]
+  complexes   Complex[]
+  leases      Lease[]
+
+  @@map("landlords")
+}
+
+model Lease {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  unitId         String   @map("unit_id") @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  landlordId     String   @map("landlord_id") @db.Uuid
+  startedAt      DateTime @map("started_at") @db.Timestamptz(6)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(6)
+  rentAmount     Decimal  @map("rent_amount") @db.Decimal(10, 2)
+  currency       String   @default("GHS") @db.VarChar(3)
+  advanceMonths  Int?     @map("advance_months") @default(0)
+  documentUrl    String?  @map("document_url")
+  status         LeaseStatus? @default(ACTIVE)
+  rules          String?
+  noticePeriod   Int?     @map("notice_period") @default(30)
+  parentLeaseId  String?  @map("parent_lease_id") @db.Uuid
+  createdAt      DateTime? @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime? @map("updated_at") @updatedAt @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+
+  landlord    Landlord @relation(fields: [landlordId], references: [id], onUpdate: NoAction)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onUpdate: NoAction)
+  unit        Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  payments    Payment[]
+  parentLease Lease?   @relation("LeaseRenewals", fields: [parentLeaseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  renewals    Lease[]  @relation("LeaseRenewals")
+
+  @@index([landlordId], map: "leases_idx_landlord_id")
+  @@index([parentLeaseId], map: "leases_idx_parent_lease_id")
+  @@index([tenantId], map: "leases_idx_tenant_id")
+  @@index([unitId], map: "leases_idx_unit_id")
+  @@map("leases")
+}
+
+model MaintenanceRequest {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  unitId        String   @map("unit_id") @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  description   String
+  photoUrl      String?  @map("photo_url") @db.VarChar(1023)
+  status        MaintenanceStatus? @default(PENDING)
+  vendorId      String?  @map("vendor_id") @db.Uuid
+  vendorResponse String? @map("vendor_response")
+  scheduledFor  DateTime? @map("scheduled_for") @db.Timestamptz(6)
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz(6)
+  cost          Decimal? @db.Decimal(10, 2)
+  costCurrency  String?  @map("cost_currency") @default("GHS") @db.VarChar(3)
+  paymentStatus InvoiceStatus? @map("payment_status")
+  createdAt     DateTime? @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime? @map("updated_at") @updatedAt @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendor Vendor? @relation(fields: [vendorId], references: [id], onUpdate: NoAction)
+
+  @@index([tenantId], map: "maintenance_requests_idx_tenant_id")
+  @@index([unitId], map: "maintenance_requests_idx_unit_id")
+  @@index([vendorId], map: "maintenance_requests_idx_vendor_id")
+  @@map("maintenance_requests")
+}
+
+model Payment {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  leaseId        String   @map("lease_id") @db.Uuid
+  amount         Decimal  @db.Decimal(10, 2)
+  currency       String   @default("GHS") @db.VarChar(3)
+  type           PaymentType
+  dueDate        DateTime @map("due_date") @db.Timestamptz(6)
+  paidAt         DateTime? @map("paid_at") @default(now()) @db.Timestamptz(6)
+  method         PaymentMethod
+  paymentStatus  PaymentStatus? @map("payment_status") @default(PENDING)
+  transactionRef String?  @map("transaction_ref") @unique @db.VarChar(255)
+  feeAmount      Decimal? @map("fee_amount") @db.Decimal(10, 2)
+  receiptUrl     String?  @map("receipt_url") @db.VarChar(1023)
+  createdAt      DateTime? @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime? @map("updated_at") @updatedAt @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([leaseId], map: "payments_idx_lease_id")
+  @@map("payments")
+}
+
+model Tenant {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  firstName       String   @map("first_name") @db.VarChar(255)
+  lastName        String   @map("last_name") @db.VarChar(255)
+  email           String   @unique @db.VarChar(255)
+  phone           String   @unique @db.VarChar(50)
+  passwordHash    String   @map("password_hash")
+  idType          IdType?  @map("id_type")
+  idNumber        String?  @map("id_number") @unique @db.VarChar(100)
+  idDocumentUrl   String?  @map("id_document_url")
+  createdAt       DateTime? @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime? @map("updated_at") @updatedAt @db.Timestamptz(6)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  user                 User[]
+  leases               Lease[]
+  maintenanceRequests MaintenanceRequest[]
+  units                Unit[]
+
+  @@map("tenants")
+}
+
+model Unit {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  complexId   String   @map("complex_id") @db.Uuid
+  label       String   @db.VarChar(100)
+  type        UnitType?
+  description String?
+  notes       String?
+  tenantId    String?  @map("tenant_id") @db.Uuid
+  createdAt   DateTime? @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime? @map("updated_at") @updatedAt @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  leases              Lease[]
+  maintenanceRequests MaintenanceRequest[]
+  complex             Complex  @relation(fields: [complexId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenant              Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([complexId], map: "units_idx_complex_id")
+  @@index([tenantId], map: "units_idx_tenant_id")
+  @@map("units")
+}
+
+model Vendor {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  name            String   @db.VarChar(255)
+  phone           String   @unique @db.VarChar(50)
+  email           String?  @unique @db.VarChar(255)
+  specialty       String?  @db.VarChar(255)
+  idNumber        String?  @map("id_number") @unique @db.VarChar(100)
+  idDocumentUrl   String?  @map("id_document_url")
+  isVerified      Boolean? @map("is_verified") @default(false)
+  rating          Float?   @default(0.0)
+  createdAt       DateTime? @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime? @map("updated_at") @updatedAt @db.Timestamptz(6)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  user                 User[]
+  maintenanceRequests MaintenanceRequest[]
+
+  @@map("vendors")
+}
+
+model Notification {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  userId      String   @map("user_id") @db.Uuid
+  type        String   @db.VarChar(50)
+  channel     String   @db.VarChar(50)
+  content     String
+  status      String   @default("PENDING") @db.VarChar(50)
+  scheduledAt DateTime? @map("scheduled_at") @db.Timestamptz(6)
+  sentAt      DateTime? @map("sent_at") @db.Timestamptz(6)
+  createdAt   DateTime? @map("created_at") @default(now()) @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId], map: "notifications_idx_user_id")
+  @@map("notifications")
+}
+
+enum IdType {
+  VOTER_ID
+  PASSPORT
+  DRIVER_LICENSE
+  GH_CARD
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELED
+}
+
+enum LeaseStatus {
+  ACTIVE
+  PENDING
+  TERMINATED
+  EXPIRED
+  RENEWED
+}
+
+enum MaintenanceStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum PaymentMethod {
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CARD
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  RENT
+  UTILITY
+  MAINTENANCE
+  DEPOSIT
+}
+
+enum UnitType {
+  ROOM
+  STUDIO
+  APARTMENT
+  HOUSE
 }
