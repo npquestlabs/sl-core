@@ -1,47 +1,54 @@
-import { IdType } from '../../generated/prisma'
+import { Landlord, Prisma } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
-import { hash } from 'bcryptjs'
+import bcrypt from 'bcryptjs'
 
-export const registerLandlordStep1 = async (data: {
-  firstName: string,
-  lastName: string,
-  email: string
-  phone: string
-  password: string
-}) => {
-  const passwordHash = await hash(data.password, 10)
-  return prisma.landlord.create({
-    data: {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      phone: data.phone,
-      passwordHash,
-    },
-  })
-}
-
-export const registerLandlordStep2 = async (
+export const updateLandlord = async (
   id: string,
-  data: {
-    idType: string
-    idNumber: string
-    idDocumentUrl: string
-    proofOfOwnership: string
-    bankName: string
-    bankAccount: string
-  },
+  data: Partial<
+    Omit<Landlord, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'deletedAt'>
+  >,
 ) => {
   return prisma.landlord.update({
     where: { id },
     data: {
-      idType: data.idType as IdType,
-      idNumber: data.idNumber,
-      idDocumentUrl: data.idDocumentUrl,
       proofOfOwnership: data.proofOfOwnership,
       bankName: data.bankName,
       bankAccount: data.bankAccount,
-      isVerified: true,
     },
   })
+}
+
+type CreateLandlordUserData = Omit<
+  Prisma.UserCreateInput,
+  'landlord' | 'tenant' | 'vendor'
+> & {
+  password: string
+  landlordData?: Omit<Prisma.LandlordCreateInput, 'users'>
+}
+
+export async function createLandlordUser(
+  data: CreateLandlordUserData,
+): Promise<Prisma.LandlordGetPayload<{ include: { user: true } }>> {
+  const { password, landlordData, ...userData } = data
+
+  const passwordHash = await bcrypt.hash(password, 10)
+
+  const result = await prisma.landlord.create({
+    data: {
+      ...(landlordData || {}),
+
+      user: {
+        create: {
+          ...userData,
+          passwordHash,
+          isVerified: false,
+        },
+      },
+    },
+    include: {
+      user: true,
+    },
+  })
+
+  return result
 }

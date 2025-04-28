@@ -1,24 +1,21 @@
 import { Request, Response } from 'express'
-import {
-  registerLandlordStep1,
-  registerLandlordStep2,
-} from '../services/landlord'
+import { createLandlordUser, updateLandlord } from '../services/landlord'
 
-export const createLandlordStep1 = async (req: Request, res: Response) => {
+export const createLandlord = async (req: Request, res: Response) => {
   try {
-    const landlord = await registerLandlordStep1(req.body)
+    const landlord = await createLandlordUser(req.body)
     res.status(201).json(landlord)
   } catch (error) {
-    res.status(500).json({ error: 'Failed to register landlord (Step 1)' })
+    res.status(500).json({ error: 'Failed to register landlord' })
   }
 }
 
-export const createLandlordStep2 = async (req: Request, res: Response) => {
+export const setLandLordData = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
-    const landlord = await registerLandlordStep2(String(id), req.body)
+    const id = req.user?.landlordId
+    const landlord = await updateLandlord(String(id), req.body)
     res.status(200).json(landlord)
   } catch (error) {
-    res.status(500).json({ error: 'Failed to verify landlord (Step 2)' })
+    res.status(500).json({ error: 'Failed to update landlord' })
   }
 }
