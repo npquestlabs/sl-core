@@ -1,5 +1,6 @@
 import express from 'express'
-import landlordRoutes from './landlord'
+import authRoutes from './auth.routes'
+import userRoutes from './user.routes'
 
 const router = express.Router()
 
@@ -8,6 +9,7 @@ router.get('/', (req, res) => {
 })
 
 // User Routes
-router.use('/user', landlordRoutes)
+router.use('/auth', authRoutes)
+router.use('/user', userRoutes)
 
 export default router
