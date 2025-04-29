@@ -23,7 +23,10 @@ type CreateTenantUserData = Omit<
   'tenant' | 'tenant' | 'vendor'
 > & {
   password: string
-  tenantData?: Omit<Prisma.TenantCreateInput, 'users'>
+  tenantData?: Omit<
+    Prisma.TenantCreateInput,
+    'user' | 'leases' | 'maintenanceRequests' | 'units'
+  >
 }
 
 export async function registerTenantUser(data: CreateTenantUserData) {
