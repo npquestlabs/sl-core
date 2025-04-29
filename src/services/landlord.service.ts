@@ -1,14 +1,14 @@
 import { Landlord, Prisma } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
+import * as authService from './auth.service'
+import { ServerError } from '../util/error'
 
 export const updateLandlord = async (
   id: string,
-  data: Partial<
-    Omit<Landlord, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'deletedAt'>
-  >,
+  data: Partial<Omit<Landlord, 'id' | 'createdAt' | 'updatedAt'>>,
 ) => {
-  return prisma.landlord.update({
+  const landlord = await prisma.landlord.update({
     where: { id },
     data: {
       proofOfOwnership: data.proofOfOwnership,
@@ -16,24 +16,24 @@ export const updateLandlord = async (
       bankAccount: data.bankAccount,
     },
   })
+
+  return landlord ?? null
 }
 
 type CreateLandlordUserData = Omit<
   Prisma.UserCreateInput,
-  'landlord' | 'tenant' | 'vendor'
+  'landlordId' | 'tenantId' | 'vendorId'
 > & {
   password: string
   landlordData?: Omit<Prisma.LandlordCreateInput, 'users'>
 }
 
-export async function createLandlordUser(
-  data: CreateLandlordUserData,
-): Promise<Prisma.LandlordGetPayload<{ include: { user: true } }>> {
+export async function registerLandlordUser(data: CreateLandlordUserData) {
   const { password, landlordData, ...userData } = data
 
   const passwordHash = await bcrypt.hash(password, 10)
 
-  const result = await prisma.landlord.create({
+  const createdLandlordUser = await prisma.landlord.create({
     data: {
       ...(landlordData || {}),
 
@@ -45,10 +45,15 @@ export async function createLandlordUser(
         },
       },
     },
+
     include: {
       user: true,
     },
   })
 
-  return result
+  if (!createdLandlordUser) {
+    throw new ServerError('Unable to create landlord user')
+  }
+
+  return await authService.loginUser(userData.email, password)
 }
