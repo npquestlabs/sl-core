@@ -19,7 +19,7 @@ export function verifyAccessToken(token: string): User {
 }
 
 export function generateEmailToken(email: string): string {
-  const token = jwt.sign({ email }, config.jwtSecret, { expiresIn: '1h' })
+  const token = jwt.sign({ email }, config.jwtSecret, { expiresIn: '5m' })
   return token
 }
 
