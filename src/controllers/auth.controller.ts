@@ -5,7 +5,7 @@ import * as tenantService from '../services/tenant.service'
 import * as vendorService from '../services/vendor.service'
 import * as userService from '../services/user.service'
 import { generateEmailToken } from '../util/token'
-import { sendEmail, sendVerificationEmail } from '../util/email'
+import { sendPasswordResetEmail, sendVerificationEmail } from '../util/email'
 import { AppError } from '../util/error'
 
 export const registerLandlord = async (req: Request, res: Response) => {
@@ -74,7 +74,7 @@ export const login = async (req: Request, res: Response) => {
 export const getCurrentUser = async (req: Request, res: Response) => {
   const userId = req.user?.id
   if (!userId) {
-    throw new AppError('Something went wrong', 500) // middleware ensures this never happens
+    throw new AppError('Something went wrong', 500)
   }
   const user = await userService.getUserById(userId)
   return res.status(200).json(user)
@@ -83,8 +83,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
   const { email } = req.body!
   const token = generateEmailToken(email)
-  const link = `https://smartlandord.com/auth/resetpassword?token=${token}`
-  await sendEmail(email, 'Reset Password', link)
+  await sendPasswordResetEmail(email, token)
   return res
     .status(200)
     .json({ success: true, message: 'Password reset url sent to email!' })
