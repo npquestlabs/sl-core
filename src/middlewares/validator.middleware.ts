@@ -16,6 +16,8 @@ export const validateBody = (schema: ZodSchema) => {
       throw new AppError(firstError.message, 400)
     }
 
+    req.body = result.data
+
     next()
   }
 }
@@ -37,6 +39,8 @@ export const validateQuery = (schema: ZodSchema) => {
       throw new AppError(firstError.message, 400)
     }
 
+    req.query = result.data
+
     next()
   }
 }
@@ -54,6 +58,8 @@ export const validateParams = (schema: ZodSchema) => {
 
       throw new AppError(firstError.message, 400)
     }
+
+    req.params = result.data
 
     next()
   }

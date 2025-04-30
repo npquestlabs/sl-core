@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs'
 import { generateAccessToken, verifyEmailToken } from '../util/token'
 import { AppError, LoginError } from '../util/error'
-import { PrismaClient, User } from '../../generated/prisma'
+import { PrismaClient } from '../../generated/prisma'
 import * as userService from './user.service'
+import { sanitizeUser } from '../util'
 
 const prisma = new PrismaClient()
 
@@ -11,9 +12,12 @@ export const loginUser = async (email: string, password: string) => {
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     throw new LoginError('Invalid email or password')
   }
-  const access = generateAccessToken(user)
 
-  return { user: user as User, access }
+  const sanitizedUser = sanitizeUser(user)
+
+  const access = generateAccessToken(sanitizedUser)
+
+  return { user: sanitizedUser, access }
 }
 
 export const loginWithToken = async (token: string) => {
@@ -25,7 +29,10 @@ export const loginWithToken = async (token: string) => {
   if (!user) {
     throw new AppError('User not found', 404)
   }
-  const access = generateAccessToken(user)
 
-  return { user: user as User, access }
+  const sanitizedUser = sanitizeUser(user)
+
+  const access = generateAccessToken(sanitizedUser)
+
+  return { user: sanitizedUser, access }
 }

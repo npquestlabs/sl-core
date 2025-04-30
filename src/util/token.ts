@@ -1,18 +1,18 @@
 import jwt from 'jsonwebtoken'
 import config from '../configs/environment'
-import { User } from '../../generated/prisma'
 import { AppError } from './error'
+import { LocalUser } from './types'
 
-export function generateAccessToken(user: User) {
+export function generateAccessToken(user: LocalUser): string {
   const accessToken = jwt.sign({ user }, config.jwtSecret, { expiresIn: '1h' })
 
   return accessToken
 }
 
-export function verifyAccessToken(token: string): User {
+export function verifyAccessToken(token: string): LocalUser {
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload
-    return decoded.user as User
+    return decoded.user
   } catch (error) {
     throw new AppError('Invalid or expired token', 401)
   }
