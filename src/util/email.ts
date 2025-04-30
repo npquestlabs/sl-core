@@ -112,7 +112,7 @@ export const sendVerificationEmail = async (user: LocalUser, token: string) => {
   const verificationLink = `${config.clientUrl}/verify-email?token=${token}`
 
   const textBody = `
-    Hi ${user.firstName} ${user.lastName} there,
+    Hi ${user.firstName} ${user.lastName},
 
     Thank you for signing up!
 
@@ -126,7 +126,7 @@ export const sendVerificationEmail = async (user: LocalUser, token: string) => {
   `
 
   const htmlContent = `
-    <p>Hi there,</p>
+    <p>Hi ${user.firstName} ${user.lastName},</p>
     <p>Thank you for signing up!</p>
     <p>Please verify your email address by clicking on the button below:</p>
     <p style="text-align: center;"><a href="${verificationLink}" class="button">Verify Email Address</a></p>
