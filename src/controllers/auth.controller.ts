@@ -17,7 +17,7 @@ export const registerLandlord = async (req: Request, res: Response) => {
 
   const emailVerificationToken = generateEmailToken(result.user.email)
 
-  await sendVerificationEmail(result.user.email, emailVerificationToken)
+  await sendVerificationEmail(result.user, emailVerificationToken)
 }
 
 export const registerTenant = async (req: Request, res: Response) => {
@@ -30,7 +30,7 @@ export const registerTenant = async (req: Request, res: Response) => {
 
   const emailVerificationToken = generateEmailToken(result.user.email)
 
-  await sendVerificationEmail(result.user.email, emailVerificationToken)
+  await sendVerificationEmail(result.user, emailVerificationToken)
 }
 
 export const registerArtisan = async (req: Request, res: Response) => {
@@ -42,7 +42,7 @@ export const registerArtisan = async (req: Request, res: Response) => {
 
   const emailVerificationToken = generateEmailToken(result.user.email)
 
-  await sendVerificationEmail(result.user.email, emailVerificationToken)
+  await sendVerificationEmail(result.user, emailVerificationToken)
 }
 
 export const login = async (req: Request, res: Response) => {

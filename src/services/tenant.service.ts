@@ -3,6 +3,8 @@ import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import * as authService from './auth.service'
 import { ServerError } from '../util/error'
+import { RegisterTenantSchema } from '../schemas/user.schema'
+import z from 'zod'
 
 export const updateTenant = async (
   id: string,
@@ -18,31 +20,30 @@ export const updateTenant = async (
   return tenant ?? null
 }
 
-type CreateTenantUserData = Omit<
-  Prisma.UserCreateInput,
-  'tenant' | 'tenant' | 'vendor'
-> & {
-  password: string
-  tenantData?: Omit<
-    Prisma.TenantCreateInput,
-    'user' | 'leases' | 'maintenanceRequests' | 'units'
-  >
-}
-
-export async function registerTenantUser(data: CreateTenantUserData) {
+export async function registerTenantUser(
+  data: z.infer<typeof RegisterTenantSchema>,
+) {
   const { password, tenantData, ...userData } = data
 
   const passwordHash = await bcrypt.hash(password, 10)
 
+  const createUserInput = {
+    ...userData,
+    passwordHash,
+    isVerified: false,
+  } as Prisma.UserCreateWithoutTenantInput
+
+  const createTenantInput = {
+    ...tenantData,
+  } as Prisma.TenantCreateWithoutUserInput
+
   const createdTenantUser = await prisma.tenant.create({
     data: {
-      ...(tenantData || {}),
+      ...createTenantInput,
 
       user: {
         create: {
-          ...userData,
-          passwordHash,
-          isVerified: false,
+          ...createUserInput,
         },
       },
     },
