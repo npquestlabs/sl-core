@@ -1,21 +1,23 @@
-import { Landlord } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import * as authService from './auth.service'
 import { ServerError } from '../util/error'
 import z from 'zod'
-import { RegisterLandlordSchema } from '../schemas/user.schema'
+import {
+  RegisterLandlordSchema,
+  UpdateLandlordSchema,
+} from '../schemas/user.schema'
 
 export const updateLandlord = async (
   id: string,
-  data: Partial<Omit<Landlord, 'id' | 'createdAt' | 'updatedAt'>>,
+  data: z.infer<typeof UpdateLandlordSchema>,
 ) => {
+  const { notificationPrefs, ...updateData } = data
   const landlord = await prisma.landlord.update({
     where: { id },
     data: {
-      proofOfOwnership: data.proofOfOwnership,
-      bankName: data.bankName,
-      bankAccount: data.bankAccount,
+      ...updateData,
+      notificationPrefs: JSON.stringify(notificationPrefs),
     },
   })
 

@@ -1,14 +1,16 @@
-import { Vendor } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import * as authService from './auth.service'
 import { ServerError } from '../util/error'
-import { RegisterArtisanSchema } from '../schemas/user.schema'
+import {
+  RegisterArtisanSchema,
+  UpdateArtisanSchema,
+} from '../schemas/user.schema'
 import z from 'zod'
 
 export const updateVendor = async (
   id: string,
-  data: Partial<Omit<Vendor, 'id' | 'createdAt' | 'updatedAt'>>,
+  data: z.infer<typeof UpdateArtisanSchema>,
 ) => {
   const vendor = await prisma.vendor.update({
     where: { id },

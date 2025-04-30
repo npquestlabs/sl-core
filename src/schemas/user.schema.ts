@@ -42,16 +42,25 @@ export const RegisterArtisanSchema = z.object({
   artisanData: z.object({}).optional(),
 })
 
-export const EmailSchema = z.object({
-  email: z.string().email('Invalid email address'),
+export const UpdateTenantSchema = z.object({
+  deletedAt: z.date().optional(),
 })
 
-export const TokenSchema = z.object({
-  token: z.string().min(1, 'Token is required'),
+export const UpdateLandlordSchema = z.object({
+  deletedAt: z.date().optional(),
+  proofOfOwnership: z.string().url('Invalid URL').optional(),
+  bankName: z.string().optional(),
+  bankAccount: z.string().optional(),
+  mobileMoneyNumber: z.string().optional(),
+  notificationPrefs: z.object({
+    email: z.boolean().optional(),
+    sms: z.boolean().optional(),
+  }),
 })
-
-export const PasswordSchema = z.object({
-  password: z.string().min(8, 'Password must be at least 8 characters long'),
+export const UpdateArtisanSchema = z.object({
+  deletedAt: z.date().optional(),
+  specialty: z.string().optional(),
+  rating: z.number().optional(),
 })
 
 export const UserUpdateSchema = z.object({
@@ -66,4 +75,16 @@ export const UserUpdateSchema = z.object({
   idType: z.nativeEnum(IdType).optional(),
   idNumber: z.string().optional(),
   idDocumentUrl: z.string().url('Invalid URL').optional(),
+})
+
+export const EmailSchema = z.object({
+  email: z.string().email('Invalid email address'),
+})
+
+export const TokenSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+})
+
+export const PasswordSchema = z.object({
+  password: z.string().min(8, 'Password must be at least 8 characters long'),
 })

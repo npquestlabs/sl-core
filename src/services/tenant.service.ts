@@ -1,14 +1,13 @@
-import { Tenant } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import * as authService from './auth.service'
 import { ServerError } from '../util/error'
-import { RegisterTenantSchema } from '../schemas/user.schema'
+import { RegisterTenantSchema, UpdateTenantSchema } from '../schemas/user.schema'
 import z from 'zod'
 
 export const updateTenant = async (
   id: string,
-  data: Partial<Omit<Tenant, 'id' | 'createdAt' | 'updatedAt'>>,
+  data: z.infer<typeof UpdateTenantSchema>,
 ) => {
   const tenant = await prisma.tenant.update({
     where: { id },
