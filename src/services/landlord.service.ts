@@ -1,4 +1,4 @@
-import { Landlord, Prisma } from '../../generated/prisma'
+import { Landlord } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import * as authService from './auth.service'
@@ -33,11 +33,11 @@ export async function registerLandlordUser(
     ...userData,
     passwordHash,
     isVerified: false,
-  } as Prisma.UserCreateWithoutLandlordInput
+  }
 
   const createLandlordInput = {
     ...landlordData,
-  } as Prisma.LandlordCreateWithoutUserInput
+  }
 
   const createdLandlordUser = await prisma.landlord.create({
     data: {

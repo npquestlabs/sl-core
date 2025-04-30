@@ -12,7 +12,7 @@ export const RegisterTenantSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
-  idType: z.enum(Object.values(IdType) as [string, ...string[]]).optional(),
+  idType: z.nativeEnum(IdType).optional(),
   idNumber: z.string().optional(),
   idDocumentUrl: z.string().url('Invalid URL').optional(),
   tenantData: z.object({}).optional(),
@@ -24,7 +24,7 @@ export const RegisterLandlordSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
-  idType: z.enum(Object.values(IdType) as [string, ...string[]]).optional(),
+  idType: z.nativeEnum(IdType).optional(),
   idNumber: z.string().optional(),
   idDocumentUrl: z.string().url('Invalid URL').optional(),
   landlordData: z.object({}).optional(),
@@ -36,7 +36,7 @@ export const RegisterArtisanSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
-  idType: z.enum(Object.values(IdType) as [string, ...string[]]).optional(),
+  idType: z.nativeEnum(IdType).optional(),
   idNumber: z.string().optional(),
   idDocumentUrl: z.string().url('Invalid URL').optional(),
   artisanData: z.object({}).optional(),
@@ -63,7 +63,7 @@ export const UserUpdateSchema = z.object({
     .string()
     .min(10, 'Phone number must be at least 10 digits')
     .optional(),
-  idType: z.enum(Object.values(IdType) as [string, ...string[]]).optional(),
+  idType: z.nativeEnum(IdType).optional(),
   idNumber: z.string().optional(),
   idDocumentUrl: z.string().url('Invalid URL').optional(),
 })

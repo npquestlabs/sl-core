@@ -1,4 +1,4 @@
-import { Vendor, Prisma } from '../../generated/prisma'
+import { Vendor } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import * as authService from './auth.service'
@@ -31,11 +31,11 @@ export async function registerVendorUser(
     ...userData,
     passwordHash,
     isVerified: false,
-  } as Prisma.UserCreateWithoutVendorInput
+  }
 
   const createVendorInput = {
     ...artisanData,
-  } as Prisma.VendorCreateWithoutUserInput
+  }
 
   const createdVendorUser = await prisma.vendor.create({
     data: {
