@@ -1,12 +1,12 @@
 import { z } from 'zod'
 import { IdType } from '../../generated/prisma'
 
-export const loginSchema = z.object({
+export const LoginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(3, 'Password must be at least 3 characters long'), // only for login
 })
 
-export const registerTenantSchema = z.object({
+export const RegisterTenantSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email address'),
@@ -18,7 +18,7 @@ export const registerTenantSchema = z.object({
   tenantData: z.object({}).optional(),
 })
 
-export const registerLandlordSchema = z.object({
+export const RegisterLandlordSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email address'),
@@ -30,7 +30,7 @@ export const registerLandlordSchema = z.object({
   landlordData: z.object({}).optional(),
 })
 
-export const registerArtisanSchema = z.object({
+export const RegisterArtisanSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email address'),
@@ -54,7 +54,7 @@ export const PasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters long'),
 })
 
-export const updateUserSchema = z.object({
+export const UserUpdateSchema = z.object({
   id: z.string().min(1, 'User ID is required'),
   firstName: z.string().min(1, 'First name is required').optional(),
   lastName: z.string().min(1, 'Last name is required').optional(),
