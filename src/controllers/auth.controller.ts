@@ -9,55 +9,40 @@ import { sendPasswordResetEmail, sendVerificationEmail } from '../util/email'
 import { AppError } from '../util/error'
 
 export const registerLandlord = async (req: Request, res: Response) => {
-  try {
-    const result = await landLordService.registerLandlordUser(req.body)
-    if (!result) {
-      return res.status(500).json({ error: 'Unable to register user' })
-    }
-    res.status(201).json(result)
-
-    const emailVerificationToken = generateEmailToken(result.user.email)
-
-    await sendVerificationEmail(result.user.email, emailVerificationToken)
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'Unable to register user' })
+  const result = await landLordService.registerLandlordUser(req.body)
+  if (!result) {
+    return res.status(500).json({ error: 'Unable to register user' })
   }
+  res.status(201).json(result)
+
+  const emailVerificationToken = generateEmailToken(result.user.email)
+
+  await sendVerificationEmail(result.user.email, emailVerificationToken)
 }
 
 export const registerTenant = async (req: Request, res: Response) => {
-  try {
-    const result = await tenantService.registerTenantUser(req.body)
-    if (!result) {
-      return res.status(500).json({ error: 'Unable to register user' })
-    }
-
-    res.status(201).json(result)
-
-    const emailVerificationToken = generateEmailToken(result.user.email)
-
-    await sendVerificationEmail(result.user.email, emailVerificationToken)
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'Unable to register user' })
+  const result = await tenantService.registerTenantUser(req.body)
+  if (!result) {
+    return res.status(500).json({ error: 'Unable to register user' })
   }
+
+  res.status(201).json(result)
+
+  const emailVerificationToken = generateEmailToken(result.user.email)
+
+  await sendVerificationEmail(result.user.email, emailVerificationToken)
 }
 
 export const registerArtisan = async (req: Request, res: Response) => {
-  try {
-    const result = await vendorService.registerVendorUser(req.body)
-    if (!result) {
-      return res.status(500).json({ error: 'Unable to register user' })
-    }
-    res.status(201).json(result)
-
-    const emailVerificationToken = generateEmailToken(result.user.email)
-
-    await sendVerificationEmail(result.user.email, emailVerificationToken)
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'Unable to register user' })
+  const result = await vendorService.registerVendorUser(req.body)
+  if (!result) {
+    return res.status(500).json({ error: 'Unable to register user' })
   }
+  res.status(201).json(result)
+
+  const emailVerificationToken = generateEmailToken(result.user.email)
+
+  await sendVerificationEmail(result.user.email, emailVerificationToken)
 }
 
 export const login = async (req: Request, res: Response) => {
@@ -90,7 +75,11 @@ export const forgotPassword = async (req: Request, res: Response) => {
 }
 
 export const updatePassword = async (req: Request, res: Response) => {
-  const { email, password } = req.body
+  const { password } = req.body
+  const email = req.user?.email
+  if (!email) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
   const user = await userService.updateUserPassword(email, password)
   if (!user) {
     return res.status(500).json({ error: 'Unable to update password' })
