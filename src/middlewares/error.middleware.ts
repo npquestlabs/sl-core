@@ -27,7 +27,7 @@ function handlePrismaError(err: Prisma.PrismaClientKnownRequestError): {
       }
 
       const capitalizedField = field.charAt(0).toUpperCase() + field.slice(1)
-      message = `${capitalizedField} already exists. Please choose a different value.`
+      message = `${capitalizedField} already exists. Please choose a different one.`
       logMessage = `Prisma Error ${
         err.code
       }: Unique constraint violation on field(s): ${
