@@ -9,9 +9,9 @@ import {
 
 const router = Router();
 
-router.post('/', authenticate, createLeaseController);
+router.post('/lease', authenticate, createLeaseController);
 router.post('/:id/renew', authenticate, renewLeaseController);
-router.get('/', authenticate, listLeasesController);
+router.get('/lease', authenticate, listLeasesController);
 router.put('/:id/terminate', authenticate, terminateLeaseController);
 
 export default router;

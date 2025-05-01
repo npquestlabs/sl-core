@@ -1,247 +1,299 @@
-import { prisma } from '../configs/prisma';
-import { generateLeasePDF, generateRentCardPDF } from '../util/pdfGenerator';
+import { prisma } from '../configs/prisma'
+import { AppError } from '../util/error'
+import { generateLeasePDF, generateRentCardPDF } from '../util/pdfGenerator'
+import { CreateLeaseSchema, RenewLeaseSchema } from '../schemas/lease.schema'
+import z from 'zod'
+import { LeaseStatus } from '../../generated/prisma'
 
-interface CreateLeaseInput {
-  unitId: string;
-  tenantId: string;
-  startedAt: string;
-  endsAt: string;
-  advanceMonths: number;
-  rules?: string;
-}
-
-interface RenewLeaseInput {
-  startedAt: string;
-  endsAt: string;
-  advanceMonths: number;
-  rules?: string;
-}
-
-class LeaseError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'LeaseError';
+export const getLeaseDetailsForPdf = async (leaseId: string) => {
+  const lease = await prisma.lease.findUnique({
+    where: { id: leaseId },
+    include: {
+      unit: {
+        include: {
+          complex: true,
+        },
+      },
+      tenant: {
+        include: {
+          user: true,
+        },
+      },
+      landlord: {
+        include: {
+          user: true,
+        },
+      },
+    },
+  })
+  if (!lease) {
+    throw new AppError(
+      'Failed to retrieve lease details for PDF generation',
+      500,
+    )
   }
+
+  return lease
 }
 
-// Create a new lease
-export const createLease = async (landlordId: string, input: CreateLeaseInput) => {
-  const { unitId, tenantId, startedAt, endsAt, advanceMonths, rules } = input;
+export const createLease = async (
+  landlordId: string,
+  input: z.infer<typeof CreateLeaseSchema>,
+) => {
+  const {
+    unitId,
+    tenantId,
+    startedAt,
+    endsAt,
+    advanceMonths,
+    noticePeriod,
+    rules,
+  } = input
 
   const unit = await prisma.unit.findUnique({
     where: { id: unitId },
-    include: { complex: { include: { landlord: true } } },
-  });
+    include: { complex: true },
+  })
   if (!unit) {
-    throw new LeaseError('Unit not found');
+    throw new AppError('Unit not found', 404)
   }
   if (unit.complex.landlordId !== landlordId) {
-    throw new LeaseError('Unit does not belong to this landlord');
+    throw new AppError('Unit does not belong to this landlord', 403)
   }
 
-  // Validate tenant exists
-  const tenant = await prisma.tenant.findUnique({ 
-    where: { id: tenantId }, 
-    include: { user: true } 
-  });
+  if (unit.rentAmount == null || unit.currency == null) {
+    throw new AppError(
+      `Unit ${unitId} is missing rent amount or currency information.`,
+      400,
+    )
+  }
+  const rentAmount = unit.rentAmount
+  const currency = unit.currency
+
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
   if (!tenant) {
-    throw new LeaseError('Tenant not found');
+    throw new AppError('Tenant not found', 404)
   }
 
+  const overlappingLease = await prisma.lease.findFirst({
+    where: {
+      unitId: unitId,
+      status: { in: ['ACTIVE', 'PENDING'] },
+      OR: [
+        {
+          startedAt: { lte: startedAt },
+          endsAt: { gte: startedAt },
+        },
+        {
+          startedAt: { lte: endsAt },
+          endsAt: { gte: endsAt },
+        },
+        {
+          startedAt: { gte: startedAt },
+          endsAt: { lte: endsAt },
+        },
+      ],
+      deletedAt: null,
+    },
+  })
 
-  const rentAmount = 180.00; 
- 
-  const landlord = await prisma.landlord.findUnique({
-    where: { id: landlordId },
-    include: { user: true },
-  });
-  if (!landlord) {
-    throw new LeaseError('Landlord not found');
+  if (overlappingLease) {
+    throw new AppError(
+      `Unit is already leased during the specified period (Overlap with Lease ID: ${overlappingLease.id})`,
+      409,
+    )
   }
 
-  const leaseData = {
-    id: '', 
-    landlord: {
-      id: landlord.id,
-      name: `${landlord.user?.firstName} ${landlord.user?.lastName}`,
-      email: landlord.user?.email || '',
-      phone: landlord.user?.phone || '',
-    },
-    tenant: {
-      id: tenant.id,
-      name: `${tenant.user?.firstName} ${tenant.user?.lastName}`,
-      email: tenant.user?.email || '',
-      phone: tenant.user?.phone || '',
-    },
-    unit: {
-      id: unit.id,
-      label: unit.label,
-      type: unit.type || '',
-    },
-    startedAt: new Date(startedAt),
-    endsAt: new Date(endsAt),
-    advanceMonths,
-    rules,
-  };
-
-  // Create lease record (without URLs first)
   const lease = await prisma.lease.create({
     data: {
       unitId,
       tenantId,
       landlordId,
-      startedAt: new Date(startedAt),
-      endsAt: new Date(endsAt),
+      startedAt,
+      endsAt,
       rentAmount,
-      currency: 'GHS',
+      currency,
       advanceMonths,
-      rules,
+      noticePeriod,
+      rules: rules ?? null,
       status: 'ACTIVE',
-      noticePeriod: 30,
     },
-  });
+  })
 
-  // Update leaseData with the real ID
-  leaseData.id = lease.id;
+  let documentUrl: string | null = null
+  let rentCardUrl: string | null = null
+  try {
+    const fullLeaseDetails = await getLeaseDetailsForPdf(lease.id)
 
-  const documentUrl = await generateLeasePDF(leaseData);
-  const rentCardUrl = await generateRentCardPDF(leaseData);
+    documentUrl = await generateLeasePDF(fullLeaseDetails)
+    rentCardUrl = await generateRentCardPDF(fullLeaseDetails)
+  } catch (pdfError) {
+    console.error(`Failed to generate PDFs for Lease ID ${lease.id}:`, pdfError)
+  }
 
-  // Update lease with Cloudinary URLs
   const updatedLease = await prisma.lease.update({
     where: { id: lease.id },
-    data: { documentUrl, rentCardUrl },
-    include: { unit: true, tenant: { include: { user: true } } },
-  });
+    data: {
+      ...(documentUrl && { documentUrl }),
+      ...(rentCardUrl && { rentCardUrl }),
+    },
+    include: {
+      unit: true,
+      tenant: { include: { user: true } },
+      landlord: { include: { user: true } },
+    },
+  })
 
-  return updatedLease;
-};
+  return updatedLease
+}
 
-// Renew an existing lease
-export const renewLease = async (leaseId: string, landlordId: string, input: RenewLeaseInput) => {
-  const { startedAt, endsAt, advanceMonths, rules } = input;
+export const renewLease = async (
+  leaseId: string,
+  landlordId: string,
+  input: z.infer<typeof RenewLeaseSchema>,
+) => {
+  const { newEndsAt, advanceMonths, rules } = input
 
-  // Validate lease exists and belongs to the landlord
   const existingLease = await prisma.lease.findUnique({
     where: { id: leaseId },
-    include: { unit: { include: { complex: true } }, tenant: { include: { user: true } } },
-  });
+    include: { unit: { include: { complex: true } } },
+  })
   if (!existingLease) {
-    throw new LeaseError('Lease not found');
+    throw new AppError('Lease not found', 404)
   }
   if (existingLease.landlordId !== landlordId) {
-    throw new LeaseError('Lease does not belong to this landlord');
+    throw new AppError('Lease does not belong to this landlord', 403)
+  }
+  if (existingLease.status !== 'ACTIVE' && existingLease.status !== 'EXPIRED') {
+    throw new AppError(
+      `Lease cannot be renewed because its status is ${existingLease.status}`,
+      400,
+    )
   }
 
-  // Fetch landlord details
-  const landlord = await prisma.landlord.findUnique({
-    where: { id: landlordId },
-    include: { user: true },
-  });
-  if (!landlord) {
-    throw new LeaseError('Landlord not found');
+  if (newEndsAt <= existingLease.endsAt) {
+    throw new AppError(
+      'New end date must be after the current lease end date',
+      400,
+    )
   }
 
-  // Construct new lease data for PDF
-  const leaseData = {
-    id: '', // Will be set after creation
-    landlord: {
-      id: landlord.id,
-      name: `${landlord.user?.firstName} ${landlord.user?.lastName}`,
-      email: landlord.user?.email || '',
-      phone: landlord.user?.phone || '',
-    },
-    tenant: {
-      id: existingLease.tenant.id,
-      name: `${existingLease.tenant.user?.firstName} ${existingLease.tenant.user?.lastName}`,
-      email: existingLease.tenant.user?.email || '',
-      phone: existingLease.tenant.user?.phone || '',
-    },
-    unit: {
-      id: existingLease.unit.id,
-      label: existingLease.unit.label,
-      type: existingLease.unit.type || '',
-    },
-    startedAt: new Date(startedAt),
-    endsAt: new Date(endsAt),
-    advanceMonths,
-    rules,
-  };
+  const newStartedAt = new Date(existingLease.endsAt)
+  newStartedAt.setDate(newStartedAt.getDate() + 1)
 
-  // Create new lease as a renewal
   const newLease = await prisma.lease.create({
     data: {
       unitId: existingLease.unitId,
       tenantId: existingLease.tenantId,
-      landlordId,
-      startedAt: new Date(startedAt),
-      endsAt: new Date(endsAt),
-      rentAmount: existingLease.rentAmount, // Carry over the rent amount
-      currency: 'GHS',
-      advanceMonths,
-      rules,
-      status: 'ACTIVE',
+      landlordId: existingLease.landlordId,
+      rentAmount: existingLease.rentAmount,
+      currency: existingLease.currency,
       noticePeriod: existingLease.noticePeriod,
+
+      startedAt: newStartedAt,
+      endsAt: newEndsAt,
+      advanceMonths,
+      rules: rules !== undefined ? rules : existingLease.rules,
+      status: LeaseStatus.ACTIVE,
       parentLeaseId: leaseId,
     },
-  });
+  })
 
-  // Update leaseData with the real ID
-  leaseData.id = newLease.id;
+  let documentUrl: string | null = null
+  let rentCardUrl: string | null = null
+  try {
+    const fullLeaseDetails = await getLeaseDetailsForPdf(newLease.id)
+    documentUrl = await generateLeasePDF(fullLeaseDetails)
+    rentCardUrl = await generateRentCardPDF(fullLeaseDetails)
+  } catch (pdfError) {
+    console.error(
+      `Failed to generate PDFs for Renewed Lease ID ${newLease.id}:`,
+      pdfError,
+    )
+  }
 
-  // Generate PDFs
-  const documentUrl = await generateLeasePDF(leaseData);
-  const rentCardUrl = await generateRentCardPDF(leaseData);
-
-  // Update new lease with Cloudinary URLs
-  const updatedLease = await prisma.lease.update({
+  const updatedNewLease = await prisma.lease.update({
     where: { id: newLease.id },
-    data: { documentUrl, rentCardUrl },
-    include: { unit: true, tenant: { include: { user: true } } },
-  });
+    data: {
+      ...(documentUrl && { documentUrl }),
+      ...(rentCardUrl && { rentCardUrl }),
+    },
+    include: {
+      unit: true,
+      tenant: { include: { user: true } },
+      landlord: { include: { user: true } },
+    },
+  })
 
-  // Mark the original lease as renewed
   await prisma.lease.update({
     where: { id: leaseId },
     data: { status: 'RENEWED' },
-  });
+  })
 
-  return updatedLease;
-};
+  return updatedNewLease
+}
 
-// List leases for a landlord
 export const listLeases = async (landlordId: string) => {
   const leases = await prisma.lease.findMany({
-    where: { landlordId, deletedAt: null },
+    where: {
+      landlordId,
+      deletedAt: null,
+    },
     include: {
       unit: { include: { complex: true } },
       tenant: { include: { user: true } },
     },
-  });
+    orderBy: {
+      createdAt: 'desc',
+    },
+  })
 
-  return leases;
-};
+  return leases
+}
 
-// Terminate a lease
 export const terminateLease = async (leaseId: string, landlordId: string) => {
-  // Validate lease exists and belongs to the landlord
-  const lease = await prisma.lease.findUnique({
-    where: { id: leaseId },
-    include: { unit: { include: { complex: true } } },
-  });
+  const lease = await prisma.lease.findFirst({
+    where: {
+      id: leaseId,
+      landlordId: landlordId,
+    },
+  })
   if (!lease) {
-    throw new LeaseError('Lease not found');
-  }
-  if (lease.landlordId !== landlordId) {
-    throw new LeaseError('Lease does not belong to this landlord');
+    throw new AppError(
+      'Lease not found or you do not have permission to modify it',
+      404,
+    )
   }
 
-  // Update lease status to terminated
+  // 2. Check if lease is already terminated or in a non-terminable state
+  if (
+    lease.status &&
+    ['TERMINATED', 'RENEWED', 'CANCELLED'].includes(lease.status)
+  ) {
+    throw new AppError(
+      `Lease is already in status ${lease.status} and cannot be terminated again.`,
+      400,
+    )
+  }
+
+  // 3. Update lease status to TERMINATED and set deletedAt (soft delete)
   const updatedLease = await prisma.lease.update({
     where: { id: leaseId },
-    data: { status: 'TERMINATED', deletedAt: new Date() },
-    include: { unit: true, tenant: { include: { user: true } } },
-  });
+    data: {
+      status: 'TERMINATED',
+      deletedAt: new Date(), // Mark as deleted now
+    },
+    include: {
+      // Return details needed by the caller
+      unit: true,
+      tenant: { include: { user: true } },
+      landlord: { include: { user: true } },
+    },
+  })
 
-  return updatedLease;
-};
+  // Add any side effects here (e.g., update unit status to 'Available')
+  // await prisma.unit.update({ where: { id: lease.unitId }, data: { status: 'Available' }});
+
+  return updatedLease
+}
+

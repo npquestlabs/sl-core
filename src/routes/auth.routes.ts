@@ -1,16 +1,47 @@
 import express from 'express'
 import { authenticate } from '../middlewares/auth.middleware'
+import { validateBody } from '../middlewares/validator.middleware'
 import * as authController from '../controllers/auth.controller'
+import {
+  RegisterLandlordSchema,
+  RegisterTenantSchema,
+  RegisterArtisanSchema,
+  LoginSchema,
+  EmailSchema,
+  TokenSchema,
+  PasswordSchema,
+} from '../schemas/user.schema'
 
 const router = express.Router()
 
-router.post('/register/landlord', authController.registerLandlord)
-router.post('/register/tenant', authController.registerTenant)
-router.post('/register/vendor', authController.registerArtisan)
-router.post('/login', authController.login)
+router.post(
+  '/register/landlord',
+  validateBody(RegisterLandlordSchema),
+  authController.registerLandlord,
+)
+router.post(
+  '/register/tenant',
+  validateBody(RegisterTenantSchema),
+  authController.registerTenant,
+)
+router.post(
+  '/register/vendor',
+  validateBody(RegisterArtisanSchema),
+  authController.registerArtisan,
+)
+router.post('/login', validateBody(LoginSchema), authController.login)
 
-router.post('/forgot-password', authController.forgotPassword)
-router.post('/verify', authController.loginWithToken)
-router.post('/reset-password', authenticate, authController.updatePassword)
+router.post(
+  '/forgot-password',
+  validateBody(EmailSchema),
+  authController.forgotPassword,
+)
+router.post('/verify', validateBody(TokenSchema), authController.loginWithToken)
+router.post(
+  '/reset-password',
+  authenticate,
+  validateBody(PasswordSchema),
+  authController.updatePassword,
+)
 
 export default router

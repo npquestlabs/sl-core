@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer'
 import { AppError } from './error'
 import config from '../configs/environment'
 import emailConfig from '../configs/email'
+import { LocalUser } from './types'
 
 const generateBaseHtml = (subject: string, contentHtml: string) => {
   return `
@@ -106,12 +107,12 @@ const sendEmail = async (mailOptions: nodemailer.SendMailOptions) => {
   }
 }
 
-export const sendVerificationEmail = async (email: string, token: string) => {
+export const sendVerificationEmail = async (user: LocalUser, token: string) => {
   const subject = 'Verify Your Email Address'
   const verificationLink = `${config.clientUrl}/verify-email?token=${token}`
 
   const textBody = `
-    Hi there,
+    Hi ${user.firstName} ${user.lastName},
 
     Thank you for signing up!
 
@@ -125,7 +126,7 @@ export const sendVerificationEmail = async (email: string, token: string) => {
   `
 
   const htmlContent = `
-    <p>Hi there,</p>
+    <p>Hi ${user.firstName} ${user.lastName},</p>
     <p>Thank you for signing up!</p>
     <p>Please verify your email address by clicking on the button below:</p>
     <p style="text-align: center;"><a href="${verificationLink}" class="button">Verify Email Address</a></p>
@@ -139,7 +140,7 @@ export const sendVerificationEmail = async (email: string, token: string) => {
 
   const mailOptions: nodemailer.SendMailOptions = {
     from: `"${config.appName || 'Your App'}" <${config.appEmail}>`,
-    to: email,
+    to: user.email,
     subject: subject,
     text: textBody,
     html: htmlBody,

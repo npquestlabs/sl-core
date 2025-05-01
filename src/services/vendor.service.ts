@@ -1,12 +1,16 @@
-import { Vendor, Prisma } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import * as authService from './auth.service'
 import { ServerError } from '../util/error'
+import {
+  RegisterArtisanSchema,
+  UpdateArtisanSchema,
+} from '../schemas/user.schema'
+import z from 'zod'
 
 export const updateVendor = async (
   id: string,
-  data: Partial<Omit<Vendor, 'id' | 'createdAt' | 'updatedAt'>>,
+  data: z.infer<typeof UpdateArtisanSchema>,
 ) => {
   const vendor = await prisma.vendor.update({
     where: { id },
@@ -18,28 +22,30 @@ export const updateVendor = async (
   return vendor ?? null
 }
 
-type CreateVendorUserData = Omit<
-  Prisma.UserCreateInput,
-  'vendor' | 'vendor' | 'vendor'
-> & {
-  password: string
-  vendorData?: Omit<Prisma.VendorCreateInput, 'users'>
-}
-
-export async function registerVendorUser(data: CreateVendorUserData) {
-  const { password, vendorData, ...userData } = data
+export async function registerVendorUser(
+  data: z.infer<typeof RegisterArtisanSchema>,
+) {
+  const { password, artisanData, ...userData } = data
 
   const passwordHash = await bcrypt.hash(password, 10)
 
+  const createUserInput = {
+    ...userData,
+    passwordHash,
+    isVerified: false,
+  }
+
+  const createVendorInput = {
+    ...artisanData,
+  }
+
   const createdVendorUser = await prisma.vendor.create({
     data: {
-      ...(vendorData || {}),
+      ...createVendorInput,
 
       user: {
         create: {
-          ...userData,
-          passwordHash,
-          isVerified: false,
+          ...createUserInput,
         },
       },
     },
