@@ -64,17 +64,12 @@ export const UpdateArtisanSchema = z.object({
 })
 
 export const UserUpdateSchema = z.object({
-  id: z.string().min(1, 'User ID is required'),
   firstName: z.string().min(1, 'First name is required').optional(),
   lastName: z.string().min(1, 'Last name is required').optional(),
-  email: z.string().email('Invalid email address').optional(),
   phone: z
     .string()
     .min(10, 'Phone number must be at least 10 digits')
     .optional(),
-  idType: z.nativeEnum(IdType).optional(),
-  idNumber: z.string().optional(),
-  idDocumentUrl: z.string().url('Invalid URL').optional(),
 })
 
 export const EmailSchema = z.object({

@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "nodemon --exec ts-node --files src/index.ts",
+    "dev": "npx prisma generate && nodemon --exec ts-node --files src/index.ts",
     "build": "tsc",
     "start": "npm run prisma:generate && npm run prisma:migrate:prod && node dist/index.js",
     "lint": "eslint src/**/*.ts --fix",

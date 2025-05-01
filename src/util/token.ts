@@ -4,7 +4,7 @@ import { AppError } from './error'
 import { LocalUser } from './types'
 
 export function generateAccessToken(user: LocalUser): string {
-  const accessToken = jwt.sign({ user }, config.jwtSecret, { expiresIn: '1h' })
+  const accessToken = jwt.sign(user, config.jwtSecret, { expiresIn: '1h' })
 
   return accessToken
 }
