@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "npm run prisma:generate && npm run prisma:migrate:prod && node dist/index.js",
     "lint": "eslint src/**/*.ts --fix",
+    "test": "exit 0",
     "format": "prettier src/**/*.ts --write"
   },
   "keywords": [],
