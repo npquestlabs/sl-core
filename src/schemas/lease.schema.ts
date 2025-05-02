@@ -13,7 +13,7 @@ export const CreateLeaseSchema = z.object({
         required_error: 'End date is required',
         invalid_type_error: 'Invalid end date format',
     }),
-    advanceMonths: z.number({ required_error: 'Advance months is required' }).int({ message: 'Advance months must be an integer' }).nonnegative({ message: 'Advance months cannot be negative' }),
+    advanceSeconds: z.number({ required_error: 'Advance seconds is required' }).int({ message: 'Advance seconds must be an integer' }).nonnegative({ message: 'Advance seconds cannot be negative' }),
     // Rent amount fetched from Unit, Currency hardcoded to GHS (as per original code)
     noticePeriod: z.number({ required_error: 'Notice period is required' }).int({ message: 'Notice period must be an integer' }).positive({ message: 'Notice period must be positive' }),
     rules: z.string().optional(), // Optional lease rules text
@@ -29,7 +29,7 @@ export const RenewLeaseSchema = z.object({
         required_error: 'New end date is required',
         invalid_type_error: 'Invalid new end date format',
     }),
-    advanceMonths: z.number({ required_error: 'Advance months is required' }).int({ message: 'Advance months must be an integer' }).nonnegative({ message: 'Advance months cannot be negative' }),
+    advanceSeconds: z.number({ required_error: 'Advance seconds is required' }).int({ message: 'Advance seconds must be an integer' }).nonnegative({ message: 'Advance seconds cannot be negative' }),
     rules: z.string().optional(), // Optional updated lease rules text
 });
 

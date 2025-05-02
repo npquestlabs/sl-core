@@ -45,7 +45,7 @@ export const createLease = async (
     tenantId,
     startedAt,
     endsAt,
-    advanceMonths,
+    advanceSeconds,
     noticePeriod,
     rules,
   } = input
@@ -61,14 +61,14 @@ export const createLease = async (
     throw new AppError('Unit does not belong to this landlord', 403)
   }
 
-  if (unit.rentAmount == null || unit.currency == null) {
+  if (unit.rentAmount == null || unit.rentAmountCurrency == null) {
     throw new AppError(
       `Unit ${unitId} is missing rent amount or currency information.`,
       400,
     )
   }
   const rentAmount = unit.rentAmount
-  const currency = unit.currency
+  const currency = unit.rentAmountCurrency
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
   if (!tenant) {
@@ -113,7 +113,7 @@ export const createLease = async (
       endsAt,
       rentAmount,
       currency,
-      advanceMonths,
+      advanceSeconds,
       noticePeriod,
       rules: rules ?? null,
       status: 'ACTIVE',
@@ -152,7 +152,7 @@ export const renewLease = async (
   landlordId: string,
   input: z.infer<typeof RenewLeaseSchema>,
 ) => {
-  const { newEndsAt, advanceMonths, rules } = input
+  const { newEndsAt, advanceSeconds, rules } = input
 
   const existingLease = await prisma.lease.findUnique({
     where: { id: leaseId },
@@ -192,7 +192,7 @@ export const renewLease = async (
 
       startedAt: newStartedAt,
       endsAt: newEndsAt,
-      advanceMonths,
+      advanceSeconds,
       rules: rules !== undefined ? rules : existingLease.rules,
       status: LeaseStatus.ACTIVE,
       parentLeaseId: leaseId,
