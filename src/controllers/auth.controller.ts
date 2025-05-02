@@ -6,7 +6,6 @@ import * as vendorService from '../services/vendor.service'
 import * as userService from '../services/user.service'
 import { generateEmailToken } from '../util/token'
 import { sendPasswordResetEmail, sendVerificationEmail } from '../util/email'
-import { AppError } from '../util/error'
 
 export const registerLandlord = async (req: Request, res: Response) => {
   const result = await landLordService.registerLandlordUser(req.body)
@@ -46,23 +45,9 @@ export const registerArtisan = async (req: Request, res: Response) => {
 }
 
 export const login = async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body
-    const result = await authService.loginUser(email, password)
-    res.status(200).json(result)
-  } catch (error) {
-    console.error(error)
-    res.status(401).json({ error: 'Invalid email or password' })
-  }
-}
-
-export const getCurrentUser = async (req: Request, res: Response) => {
-  const userId = req.user?.id
-  if (!userId) {
-    throw new AppError('Something went wrong', 500)
-  }
-  const user = await userService.getUserById(userId)
-  return res.status(200).json(user)
+  const { email, password } = req.body
+  const result = await authService.loginUser(email, password)
+  res.status(200).json(result)
 }
 
 export const forgotPassword = async (req: Request, res: Response) => {
@@ -76,11 +61,11 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
 export const updatePassword = async (req: Request, res: Response) => {
   const { password } = req.body
-  const email = req.user?.email
-  if (!email) {
+  const userId = req.user?.id
+  if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
-  const user = await userService.updateUserPassword(email, password)
+  const user = await userService.updateUserPassword(userId, password)
   if (!user) {
     return res.status(500).json({ error: 'Unable to update password' })
   }

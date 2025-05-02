@@ -23,7 +23,13 @@ export const getUserById = async (id: string) => {
     where: { id },
   })
 
-  return user ?? null
+  if (!user) {
+    throw new AppError('User not found', 404)
+  }
+
+  user.passwordHash = ''
+
+  return user
 }
 
 export const getUserByEmail = async (email: string) => {
@@ -31,30 +37,42 @@ export const getUserByEmail = async (email: string) => {
     where: { email },
   })
 
-  return user ?? null
-}
-
-export const updateUserPassword = async (email: string, password: string) => {
-  const user = await getUserByEmail(email)
-
   if (!user) {
     throw new AppError('User not found', 404)
   }
 
-  if (await bcrypt.compare(password, user.passwordHash)) {
-    throw new AppError(
-      'New password cannot be the same as the old password',
-      400,
-    )
-  }
+  user.passwordHash = ''
 
-  const passwordHash = await bcrypt.hash(password, 10)
+  return user
+}
 
-  const updatedUser = await prisma.user.update({
-    where: { email },
-    data: {
-      passwordHash,
-    },
+export const updateUserPassword = async (userId: string, password: string) => {
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+    })
+
+    if (!user) {
+      throw new AppError('User not found', 404)
+    }
+
+    if (await bcrypt.compare(password, user.passwordHash)) {
+      throw new AppError(
+        'New password cannot be the same as the old password',
+        400,
+      )
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10)
+
+    const updated = await tx.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+      },
+    })
+
+    return updated
   })
 
   return updatedUser ?? null

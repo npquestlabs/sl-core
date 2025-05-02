@@ -10,7 +10,7 @@ const prisma = new PrismaClient()
 export const loginUser = async (email: string, password: string) => {
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    throw new LoginError('Invalid email or password')
+    throw new LoginError()
   }
 
   const sanitizedUser = sanitizeUser(user)
