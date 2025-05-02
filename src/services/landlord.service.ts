@@ -12,12 +12,10 @@ export const updateLandlord = async (
   id: string,
   data: z.infer<typeof UpdateLandlordSchema>,
 ) => {
-  const { notificationPrefs, ...updateData } = data
   const landlord = await prisma.landlord.update({
     where: { id },
     data: {
-      ...updateData,
-      notificationPrefs: JSON.stringify(notificationPrefs),
+      ...data,
     },
   })
 

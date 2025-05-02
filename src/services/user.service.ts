@@ -1,11 +1,12 @@
-import { User } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import { AppError } from '../util/error'
+import { z } from 'zod'
+import { UpdateUserSchema } from '../schemas/user.schema'
 
 export const updateUser = async (
   id: string,
-  data: Partial<Omit<User, 'id' | 'passwordHash' | 'email' | 'phone'>>,
+  data: z.infer<typeof UpdateUserSchema>,
 ) => {
   const user = await prisma.user.update({
     where: { id },
@@ -37,7 +38,7 @@ export const updateUserPassword = async (email: string, password: string) => {
   const user = await getUserByEmail(email)
 
   if (!user) {
-    return null
+    throw new AppError('User not found', 404)
   }
 
   if (await bcrypt.compare(password, user.passwordHash)) {
