@@ -1,47 +1,51 @@
-import { Landlord, Prisma } from '../../generated/prisma'
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import * as authService from './auth.service'
 import { ServerError } from '../util/error'
+import z from 'zod'
+import {
+  RegisterLandlordSchema,
+  UpdateLandlordSchema,
+} from '../schemas/user.schema'
 
 export const updateLandlord = async (
   id: string,
-  data: Partial<Omit<Landlord, 'id' | 'createdAt' | 'updatedAt'>>,
+  data: z.infer<typeof UpdateLandlordSchema>,
 ) => {
   const landlord = await prisma.landlord.update({
     where: { id },
     data: {
-      proofOfOwnership: data.proofOfOwnership,
-      bankName: data.bankName,
-      bankAccount: data.bankAccount,
+      ...data,
     },
   })
 
   return landlord ?? null
 }
 
-type CreateLandlordUserData = Omit<
-  Prisma.UserCreateInput,
-  'landlordId' | 'tenantId' | 'vendorId'
-> & {
-  password: string
-  landlordData?: Omit<Prisma.LandlordCreateInput, 'users'>
-}
-
-export async function registerLandlordUser(data: CreateLandlordUserData) {
+export async function registerLandlordUser(
+  data: z.infer<typeof RegisterLandlordSchema>,
+) {
   const { password, landlordData, ...userData } = data
 
   const passwordHash = await bcrypt.hash(password, 10)
 
+  const createUserInput = {
+    ...userData,
+    passwordHash,
+    isVerified: false,
+  }
+
+  const createLandlordInput = {
+    ...landlordData,
+  }
+
   const createdLandlordUser = await prisma.landlord.create({
     data: {
-      ...(landlordData || {}),
+      ...createLandlordInput,
 
       user: {
         create: {
-          ...userData,
-          passwordHash,
-          isVerified: false,
+          ...createUserInput,
         },
       },
     },

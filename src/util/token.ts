@@ -1,25 +1,25 @@
 import jwt from 'jsonwebtoken'
 import config from '../configs/environment'
-import { User } from '../../generated/prisma'
 import { AppError } from './error'
+import { LocalUser } from './types'
 
-export function generateAccessToken(user: User) {
-  const accessToken = jwt.sign({ user }, config.jwtSecret, { expiresIn: '1h' })
+export function generateAccessToken(user: LocalUser): string {
+  const accessToken = jwt.sign(user, config.jwtSecret, { expiresIn: '1h' })
 
   return accessToken
 }
 
-export function verifyAccessToken(token: string): User {
+export function verifyAccessToken(token: string): LocalUser {
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload
-    return decoded.user as User
+    return decoded.user
   } catch (error) {
     throw new AppError('Invalid or expired token', 401)
   }
 }
 
 export function generateEmailToken(email: string): string {
-  const token = jwt.sign({ email }, config.jwtSecret, { expiresIn: '1h' })
+  const token = jwt.sign({ email }, config.jwtSecret, { expiresIn: '5m' })
   return token
 }
 

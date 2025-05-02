@@ -10,6 +10,6 @@ router.get('/', (req, res) => {
 
 // User Routes
 router.use('/auth', authRoutes)
-router.use('/user', userRoutes)
+router.use('/users', userRoutes)
 
 export default router

@@ -13,6 +13,10 @@ const envStore = {
   port: process.env.PORT,
   databaseUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
+  clientUrl: process.env.CLIENT_URL,
+  appEmail: process.env.APP_EMAIL,
+  appEmailPassword: process.env.APP_EMAIL_PASS,
+  appName: 'Smart Landlord',
 }
 
 const getConfig = (): Config => {
