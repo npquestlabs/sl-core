@@ -5,8 +5,8 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "npx prisma generate && nodemon --exec ts-node --files src/index.ts",
-    "build": "tsc",
-    "start": "npm run prisma:generate && npm run prisma:migrate:prod && node dist/index.js",
+    "build": "npx prisma generate && tsc",
+    "start": "npx prisma generate && node dist/index.js",
     "lint": "eslint src/**/*.ts --fix",
     "test": "exit 0",
     "format": "prettier src/**/*.ts --write"
