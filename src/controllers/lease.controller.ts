@@ -18,7 +18,7 @@ export const createLeaseController = async (req: Request, res: Response) => {
   }
 
   if (!user.landlordId) {
-    return res.status(403).json({ message: 'User is not a landlord' })
+    throw new AppError('User is not a landlord', 403)
   }
 
   const input = CreateLeaseSchema.parse(req.body)
@@ -38,7 +38,7 @@ export const renewLeaseController = async (req: Request, res: Response) => {
   }
 
   if (!user.landlordId) {
-    return res.status(403).json({ message: 'User is not a landlord' })
+    throw new AppError('User is not a landlord', 403)
   }
   const leaseId = req.params.leaseId
   const input = RenewLeaseSchema.parse(req.body)
@@ -58,7 +58,7 @@ export const listLeasesController = async (req: Request, res: Response) => {
   }
 
   if (!user.landlordId) {
-    return res.status(403).json({ message: 'User is not a landlord' })
+    throw new AppError('User is not a landlord', 403)
   }
 
   const leases = await listLeases(user.landlordId)
@@ -76,7 +76,7 @@ export const terminateLeaseController = async (req: Request, res: Response) => {
   }
 
   if (!user.landlordId) {
-    return res.status(403).json({ message: 'User is not a landlord' })
+    throw new AppError('User is not a landlord', 403)
   }
   const leaseId = req.params.leaseId
 
