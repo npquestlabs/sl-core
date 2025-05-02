@@ -2,7 +2,8 @@ import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
 import cloudinary from '../configs/cloudinary';
-import { Prisma, LeaseStatus, PaymentStatus } from '../../generated/prisma'; 
+import { Prisma, LeaseStatus, PaymentStatus } from '../../generated/prisma';
+import { formatDuration, intervalToDuration } from 'date-fns'; 
 
 
 type LeasePayloadForPDF = Prisma.LeaseGetPayload<{
@@ -69,6 +70,33 @@ type PaymentPayloadForPDF = Prisma.PaymentGetPayload<{
 const formatDate = (date: Date | null | undefined) => date ? new Date(date).toLocaleDateString('en-GB') : 'N/A';
 
 const getText = (value: string | null | undefined, prefix = '') => prefix + (value || 'N/A');
+
+/**
+ * Formats a duration given in seconds into a human-readable string.
+ * Example: 7 * 86400 seconds becomes "1 week"
+ * Example: 90 * 86400 seconds becomes "2 months, 4 weeks, 2 days" (or customize format)
+ * @param seconds The duration in seconds.
+ * @returns A formatted string like "1 month", "2 weeks, 3 days", or "N/A".
+ */
+const formatAdvanceDuration = (seconds: number | null | undefined): string => {
+  if (!seconds || seconds <= 0) {
+    return 'N/A';
+  }
+
+  try {
+    const duration = intervalToDuration({ start: 0, end: seconds * 1000 });
+
+    return formatDuration(duration, {
+      format: ['years', 'months', 'weeks', 'days'],
+      zero: false,
+      delimiter: ', ',
+    });
+  } catch (error) {
+    console.error("Error formatting duration:", error);
+    return `${seconds} seconds (formatting error)`;
+  }
+};
+
 
 /**
  * Saves a PDF document to a temporary local file, uploads it to Cloudinary,
@@ -219,7 +247,7 @@ export const generateLeasePDF = async (lease: LeasePayloadForPDF): Promise<strin
   doc.fontSize(12);
   doc.text(`Start Date: ${formatDate(lease.startedAt)}`);
   doc.text(`End Date: ${formatDate(lease.endsAt)}`);
-  doc.text(`Advance Months Paid: ${lease.advanceMonths ?? 0}`);
+  doc.text(`Advance Duration Paid: ${formatAdvanceDuration(lease.advanceSeconds)}`);
   doc.text(`Notice Period (days): ${lease.noticePeriod ?? 'Default'}`);
   if (lease.rules) {
     doc.text('Additional Rules/Clauses:');
