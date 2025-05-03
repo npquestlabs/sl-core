@@ -27,7 +27,7 @@ export const getUserById = async (id: string) => {
     throw new AppError('User not found', 404)
   }
 
-  user.passwordHash = ''
+  user.passwordHash = '**********' // Mask the password hash for security
 
   return user
 }
@@ -41,7 +41,7 @@ export const getUserByEmail = async (email: string) => {
     throw new AppError('User not found', 404)
   }
 
-  user.passwordHash = ''
+  user.passwordHash = '**********' // Mask the password hash for security
 
   return user
 }
@@ -91,6 +91,11 @@ export const verifyUserEmail = async (email: string) => {
       idDocumentUrl: true,
       phone: true,
     },
+    include: {
+      landlord: true,
+      tenant: true,
+      vendor: true,
+    }
   })
 
   return user ?? null

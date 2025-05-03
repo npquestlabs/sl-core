@@ -17,13 +17,13 @@ export const createLeaseController = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
-  if (!user.landlordId) {
+  if (!user.landlord) {
     throw new AppError('User is not a landlord', 403)
   }
 
   const input = CreateLeaseSchema.parse(req.body)
 
-  const lease = await createLease(user.landlordId, input)
+  const lease = await createLease(user.landlord.id, input)
 
   return res.status(201).json({
     success: true,
@@ -37,13 +37,13 @@ export const renewLeaseController = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
-  if (!user.landlordId) {
+  if (!user.landlord) {
     throw new AppError('User is not a landlord', 403)
   }
   const leaseId = req.params.leaseId
   const input = RenewLeaseSchema.parse(req.body)
 
-  const lease = await renewLease(leaseId, user.landlordId, input)
+  const lease = await renewLease(leaseId, user.landlord.id, input)
 
   return res.status(200).json({
     success: true,
@@ -57,11 +57,11 @@ export const listLeasesController = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
-  if (!user.landlordId) {
+  if (!user.landlord) {
     throw new AppError('User is not a landlord', 403)
   }
 
-  const leases = await listLeases(user.landlordId)
+  const leases = await listLeases(user.landlord.id)
 
   return res.status(200).json({
     success: true,
@@ -75,12 +75,12 @@ export const terminateLeaseController = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
-  if (!user.landlordId) {
+  if (!user.landlord) {
     throw new AppError('User is not a landlord', 403)
   }
   const leaseId = req.params.leaseId
 
-  const lease = await terminateLease(leaseId, user.landlordId)
+  const lease = await terminateLease(leaseId, user.landlord.id)
 
   return res.status(200).json({
     success: true,
@@ -98,7 +98,7 @@ export const downloadLeaseDocumentController = async (
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
-  if (!user.landlordId && !user.tenantId) {
+  if (!user.landlord && !user.tenant) {
     throw new AppError('User is not a landlord or tenant', 403)
   }
 
@@ -116,7 +116,7 @@ export const downloadLeaseDocumentController = async (
 
   if (!lease) throw new AppError('Lease not found', 404)
 
-  if (lease.landlord.id !== user.landlordId && lease.tenant.id !== user.tenantId) {
+  if (lease.landlord.id !== user.landlord?.id && lease.tenant.id !== user.tenant?.id) {
     throw new AppError('Unauthorized to access this document', 403)
   }
 
@@ -141,7 +141,7 @@ export const getLeaseDetailsController = async (
     return res.status(401).json({ message: 'Unauthorized' })
   }
 
-  if (!user.landlordId && !user.tenantId) {
+  if (!user.landlord && !user.tenant) {
     throw new AppError('User is not a landlord or tenant', 403)
   }
 
@@ -174,7 +174,7 @@ export const getLeaseDetailsController = async (
   }
 
   // Check if user is either landlord or tenant
-  if (lease.landlord.id !== user.landlordId && lease.tenant.id !== user.tenantId) {
+  if (lease.landlord.id !== user.landlord?.id && lease.tenant.id !== user.tenant?.id) {
     throw new AppError('Unauthorized to access this lease', 403)
   }
 

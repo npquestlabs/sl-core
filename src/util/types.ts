@@ -1,10 +1,21 @@
+import { Landlord, Tenant } from '../../generated/prisma'
+
 export type LocalUser = {
   id: string
   firstName: string
   lastName: string
   email: string
-  isVerified: boolean | null
-  landlordId: string | null
-  tenantId: string | null
-  vendorId: string | null
+  isVerified: boolean
+  landlord: Landlord | null
+  tenant: Tenant | null
+  vendor: Tenant | null
+}
+
+export type PaginatedResponse<T> = {
+  data: T[]
+  meta: {
+    limit: number
+    page: number
+    total: number
+  }
 }
