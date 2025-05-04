@@ -18,10 +18,10 @@ model User {
   phone        String @unique @db.VarChar(50)
   passwordHash String @map("password_hash")
 
-  idType        IdType?  @map("id_type")
-  idNumber      String?  @unique @map("id_number") @db.VarChar(100)
-  idDocumentUrl String?  @map("id_document_url")
-  isVerified    Boolean? @default(false) @map("is_verified")
+  idType        IdType? @map("id_type")
+  idNumber      String? @unique @map("id_number") @db.VarChar(100)
+  idDocumentUrl String? @map("id_document_url")
+  isVerified    Boolean @default(false) @map("is_verified")
 
   landlordId String? @unique @map("landlord_id") @db.Uuid
   tenantId   String? @unique @map("tenant_id") @db.Uuid

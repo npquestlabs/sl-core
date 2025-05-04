@@ -6,9 +6,9 @@ export function sanitizeUser({
   firstName,
   lastName,
   isVerified,
-  landlordId,
-  tenantId,
-  vendorId,
+  landlord,
+  tenant,
+  vendor,
 }: LocalUser & Record<string, unknown>): LocalUser {
   return {
     id,
@@ -16,8 +16,8 @@ export function sanitizeUser({
     firstName,
     lastName,
     isVerified,
-    landlordId,
-    tenantId,
-    vendorId,
+    landlord,
+    tenant,
+    vendor,
   }
 }
