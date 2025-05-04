@@ -12,5 +12,6 @@ router.get('/:unitId', expect(['Landlord', 'Tenant']), unitsController.getUnitWi
 router.patch('/:unitId', expect(['Landlord']), validateBody(UpdateUnitSchema), unitsController.updateUnit)
 router.patch('/:unitId/assign/:tenantId', expect(['Landlord']), unitsController.assignTenant)
 router.patch('/:unitId/remove/:tenantId', expect(['Landlord']), unitsController.removeTenant)
+router.delete('/:unitId', expect(['Landlord']), unitsController.deleteUnit)
 
 export default router
