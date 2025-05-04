@@ -41,6 +41,27 @@ export const getUnit = async (req: Request, res: Response) => {
   return res.status(200).json(unit)
 }
 
+export const getUnitByComplexIdAndUnitIdParams = async (req: Request, res: Response) => {
+  const user = req.user
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  if (!user.landlord) {
+    return res.status(403).json({ error: 'Permission denied' })
+  }
+
+  const { complexId, unitId } = req.params
+  if (!unitId || !complexId) {
+    return res.status(400).json({ error: 'Invalid params' })
+  }
+
+  const unit = await unitService.getUnit({ id: unitId, complex: { id: complexId, landlordId: user.landlord.id } })
+  if (!unit) {
+    return res.status(404).json({ error: 'Unit not found' })
+  }
+}
+
 export const getUnitsOfComplex = async (req: Request, res: Response) => {
   const user = req.user
 
@@ -49,10 +70,20 @@ export const getUnitsOfComplex = async (req: Request, res: Response) => {
   }
 
   if (!user.landlord) {
-    return res.status(400).json({ error: 'User is not a landlord' })
+    return res.status(403).json({ error: 'Permission denied' })
   }
 
-  const complexId = req.params.complexId
+  const { complexId } = req.params
+
+  if (!complexId) {
+    return res.status(400).json({ error: 'Invalid params' })
+  }
+
+  const landlordComplex = await complexService.getComplex({ id: complexId, landlordId: user.landlord.id });
+
+  if (!landlordComplex) {
+    return res.status(403).json({ error: 'Permission denied' })
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const units = await unitService.getUnitsInComplex(complexId, req.query as any)
@@ -72,11 +103,11 @@ export const createUnit = async (req: Request, res: Response) => {
   }
 
   if (!user.landlord) {
-    return res.status(400).json({ error: 'User is not a landlord' })
+    return res.status(403).json({ error: 'Permission denied' })
   }
 
   if (!complexId) {
-    return res.status(400).json({ error: 'Complex ID is required' })
+    return res.status(400).json({ error: 'Invalid params' })
   }
 
   const createdUnit = await unitService.createUnit(complexId, req.body)
@@ -170,4 +201,28 @@ export const removeTenant = async (req: Request, res: Response) => {
     message: 'Tenant removed from unit successfully',
     data: updatedUnit,
   })
+}
+
+export const deleteUnit = async (req: Request, res: Response) => {
+  const user = req.user
+
+  if (!user) {
+    return res.status(401).json({ error: 'Not authorized' })
+  }
+
+  if (!user.landlord) {
+    return res.status(403).json({ error: 'Permission denied' })
+  }
+
+  const { unitId } = req.params
+  if (!unitId) {
+    return res.status(400).json({ error: 'Invalid params' })
+  }
+
+  const deletedUnit = await unitService.deleteUnit({id: unitId, complex: { landlordId: user.landlord.id }})
+  if (!deletedUnit) {
+    return res.status(404).json({ error: 'Unit not found' })
+  }
+
+  return res.status(200).json(deletedUnit)
 }
