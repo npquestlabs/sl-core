@@ -2,7 +2,6 @@ import nodemailer from 'nodemailer'
 import { AppError } from './error'
 import config from '../configs/environment'
 import emailConfig from '../configs/email'
-import { LocalUser } from './types'
 
 const generateBaseHtml = (subject: string, contentHtml: string) => {
   return `
@@ -107,7 +106,7 @@ const sendEmail = async (mailOptions: nodemailer.SendMailOptions) => {
   }
 }
 
-export const sendVerificationEmail = async (user: LocalUser, token: string) => {
+export const sendVerificationEmail = async (user: { email: string; firstName: string; lastName: string; }, token: string) => {
   const subject = 'Verify Your Email Address'
   const verificationLink = `${config.clientUrl}/verify-email?token=${token}`
 
