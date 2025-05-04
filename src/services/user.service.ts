@@ -13,21 +13,52 @@ export const updateUser = async (
     data: {
       ...data,
     },
+    omit: {
+      passwordHash: true,
+      idType: true,
+      idNumber: true,
+      idDocumentUrl: true,
+      phone: true,
+    },
   })
 
   return user ?? null
 }
 
-export const getUserById = async (id: string) => {
+export const getUserWithPopulatedData = async (id: string) => {
   const user = await prisma.user.findUnique({
     where: { id },
+    omit: {
+      passwordHash: true,
+      landlordId: true,
+      tenantId: true,
+      vendorId: true,
+    },
+    include: {
+      landlord: true,
+      tenant: true,
+      vendor: true,
+    },
   })
 
   if (!user) {
     throw new AppError('User not found', 404)
   }
 
-  user.passwordHash = '**********' // Mask the password hash for security
+  return user
+}
+
+export const getUserById = async (id: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    omit: {
+      passwordHash: true,
+    },
+  })
+
+  if (!user) {
+    throw new AppError('User not found', 404)
+  }
 
   return user
 }
@@ -35,13 +66,14 @@ export const getUserById = async (id: string) => {
 export const getUserByEmail = async (email: string) => {
   const user = await prisma.user.findUnique({
     where: { email },
+    omit: {
+      passwordHash: true,
+    },
   })
 
   if (!user) {
     throw new AppError('User not found', 404)
   }
-
-  user.passwordHash = '**********' // Mask the password hash for security
 
   return user
 }
@@ -70,6 +102,13 @@ export const updateUserPassword = async (userId: string, password: string) => {
       data: {
         passwordHash,
       },
+      omit: {
+        passwordHash: true,
+        idType: true,
+        idNumber: true,
+        idDocumentUrl: true,
+        phone: true,
+      },
     })
 
     return updated
@@ -95,7 +134,7 @@ export const verifyUserEmail = async (email: string) => {
       landlord: true,
       tenant: true,
       vendor: true,
-    }
+    },
   })
 
   return user ?? null

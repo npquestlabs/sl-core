@@ -11,14 +11,13 @@ export const updateUser = async (req: Request, res: Response) => {
   }
 }
 
-export const getUser = async (req: Request, res: Response) => {
+export const getCurrentUser = async (req: Request, res: Response) => {
   try {
     const id = req.user?.id
-    console.log(req.user?.id)
-    const user = await userService.getUserById(String(id))
+    const user = await userService.getUserWithPopulatedData(String(id))
     res.status(200).json(user)
   } catch (error) {
     console.error(error)
-    res.status(500).json({ error: 'Failed to get user' })
+    res.status(500).json({ error: 'Failed to get current user' })
   }
 }
