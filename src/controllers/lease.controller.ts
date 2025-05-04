@@ -14,7 +14,7 @@ import { generateLeasePDF, generateRentCardPDF } from '../util/pdfGenerator'
 export const createLeaseController = async (req: Request, res: Response) => {
   const user = req.user
   if (!user) {
-    return res.status(401).json({ message: 'Unauthorized' })
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
   if (!user.landlord) {
@@ -34,7 +34,7 @@ export const createLeaseController = async (req: Request, res: Response) => {
 export const renewLeaseController = async (req: Request, res: Response) => {
   const user = req.user
   if (!user) {
-    return res.status(401).json({ message: 'Unauthorized' })
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
   if (!user.landlord) {
@@ -54,7 +54,7 @@ export const renewLeaseController = async (req: Request, res: Response) => {
 export const listLeasesController = async (req: Request, res: Response) => {
   const user = req.user
   if (!user) {
-    return res.status(401).json({ message: 'Unauthorized' })
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
   if (!user.landlord) {
@@ -72,7 +72,7 @@ export const listLeasesController = async (req: Request, res: Response) => {
 export const terminateLeaseController = async (req: Request, res: Response) => {
   const user = req.user
   if (!user) {
-    return res.status(401).json({ message: 'Unauthorized' })
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
   if (!user.landlord) {
@@ -95,7 +95,7 @@ export const downloadLeaseDocumentController = async (
   const user = req.user
 
   if (!user) {
-    return res.status(401).json({ message: 'Unauthorized' })
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
   if (!user.landlord && !user.tenant) {
@@ -138,7 +138,7 @@ export const getLeaseDetailsController = async (
 ) => {
   const user = req.user
   if (!user) {
-    return res.status(401).json({ message: 'Unauthorized' })
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
   if (!user.landlord && !user.tenant) {

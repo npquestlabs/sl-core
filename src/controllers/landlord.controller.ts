@@ -14,7 +14,7 @@ export const updateLandlord = async (req: Request, res: Response) => {
   try {
     const landlordId = req.user?.landlord?.id
     if (!landlordId) {
-      return res.status(401).json({ message: 'Unauthorized' })
+      return res.status(401).json({ error: 'Unauthorized' })
     }
     const landlord = await landlordService.updateLandlord(landlordId, req.body)
     res.status(200).json(landlord)
