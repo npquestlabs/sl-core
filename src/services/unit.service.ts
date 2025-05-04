@@ -36,6 +36,18 @@ export async function updateUnit(
   return updatedUnit ?? null
 }
 
+export async function getUnit(
+  where: Prisma.UnitWhereUniqueInput,
+  include: Prisma.UnitInclude = {},
+) {
+  const unit = await prisma.unit.findUnique({
+    where,
+    include,
+  })
+
+  return unit ?? null
+}
+
 export async function getUnitById(
   unitId: string,
   include: Prisma.UnitInclude = {},
@@ -58,26 +70,24 @@ export async function getUnitsInComplex(
 ): Promise<PaginatedResponse<Prisma.UnitGetPayload<Record<string, never>>>> {
   const { page, limit, filter } = pagination
 
+  const whereClause: Prisma.UnitWhereInput = {
+    complexId: complexId,
+    deletedAt: null,
+  }
+
+  if (filter) {
+    whereClause.OR = [
+      { label: { contains: filter, mode: 'insensitive' } },
+      { description: { contains: filter, mode: 'insensitive' } },
+    ]
+  }
+
   const total = await prisma.unit.count({
-    where: {
-      complexId: complexId,
-      deletedAt: null,
-      OR: [
-        { label: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
   })
 
   const units = await prisma.unit.findMany({
-    where: {
-      complexId: complexId,
-      deletedAt: null,
-      OR: [
-        { label: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
     orderBy: {
       createdAt: 'desc',
     },
@@ -94,26 +104,24 @@ export async function getUnitsOfTenant(
 ): Promise<PaginatedResponse<Prisma.UnitGetPayload<Record<string, never>>>> {
   const { page, limit, filter } = pagination
 
+  const whereClause: Prisma.UnitWhereInput = {
+    tenantId: tenantId,
+    deletedAt: null,
+  }
+
+  if (filter) {
+    whereClause.OR = [
+      { label: { contains: filter, mode: 'insensitive' } },
+      { description: { contains: filter, mode: 'insensitive' } },
+    ]
+  }
+
   const total = await prisma.unit.count({
-    where: {
-      tenantId: tenantId,
-      deletedAt: null,
-      OR: [
-        { label: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
   })
 
   const units = await prisma.unit.findMany({
-    where: {
-      tenantId: tenantId,
-      deletedAt: null,
-      OR: [
-        { label: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
     orderBy: {
       createdAt: 'desc',
     },
@@ -170,4 +178,13 @@ export async function assignTenant(unitId: string, tenantId: string) {
   })
 
   return updatedUnit ?? null
+}
+
+export async function deleteUnit(where: Prisma.UnitWhereUniqueInput) {
+  const deletedUnit = await prisma.unit.update({
+    where,
+    data: { deletedAt: new Date() },
+  })
+
+  return deletedUnit ?? null
 }
