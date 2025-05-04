@@ -1,7 +1,19 @@
 import { z } from 'zod'
 
 export const PaginationSchema = z.object({
-  limit: z.number().default(15),
-  page: z.number().default(1),
-  filter: z.string().max(255).optional(),
+  limit: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .default('15')
+    .refine((val) => !isNaN(val) && val > 0, {
+      message: 'Limit must be a positive number',
+    }),
+  page: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .default('1')
+    .refine((val) => !isNaN(val) && val > 0, {
+      message: 'Page must be a positive number',
+    }),
+  filter: z.string().max(24, 'Filter text too long').optional(),
 })
