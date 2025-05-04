@@ -6,7 +6,7 @@ import { UpdateUserSchema } from '../schemas/user.schema'
 
 const router = express.Router()
 
-router.get('/me', authenticate, userController.getUser)
+router.get('/me', authenticate, userController.getCurrentUser)
 router.patch('/me/update', authenticate, validateBody(UpdateUserSchema), userController.updateUser)
 
 export default router
