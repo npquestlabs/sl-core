@@ -6,7 +6,7 @@ import {
 import { prisma } from '../configs/prisma'
 import { AppError, NotFoundError } from '../util/error'
 import { PaginationSchema } from '../schemas/extras.schema'
-import { PaginatedResponse } from '../util/types'
+import { PaginatedResponse } from '../types'
 import { Prisma } from '../../generated/prisma'
 
 export async function createComplex(
