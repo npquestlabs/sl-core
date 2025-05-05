@@ -1,6 +1,6 @@
 import { prisma } from '../configs/prisma'
 import { AppError } from '../util/error'
-import { generateLeasePDF, generateRentCardPDF } from '../util/pdfGenerator'
+import { generateLeasePDF, generateRentCardPDF } from '../util/pdf'
 import { CreateLeaseSchema, RenewLeaseSchema } from '../schemas/lease.schema'
 import z from 'zod'
 import { LeaseStatus } from '../../generated/prisma'

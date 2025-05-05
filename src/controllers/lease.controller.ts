@@ -9,7 +9,7 @@ import {
   terminateLease,
   getLeaseDetailsForPdf,
 } from '../services/lease.service'
-import { generateLeasePDF, generateRentCardPDF } from '../util/pdfGenerator'
+import { generateLeasePDF, generateRentCardPDF } from '../util/pdf'
 
 export const createLeaseController = async (req: Request, res: Response) => {
   const user = req.user

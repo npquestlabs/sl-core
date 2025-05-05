@@ -1,5 +1,3 @@
-# .github/dependabot.yml
-
 version: 2
 updates:
   - package-ecosystem: "npm" # Specify npm for Node.js projects (Express, Prisma)
@@ -13,10 +11,10 @@ updates:
     # OPTIONAL: Assign reviewers to Dependabot PRs
     reviewers:
       - "nisaacdz"
-      - "ziglaCity"
       - "steveAzo"
+      - "ziglaCity"
     # OPTIONAL: Limit the number of open PRs from Dependabot for npm
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     # OPTIONAL: Customize commit messages
     commit-message:
       prefix: "chore" # Prefix commit messages with "chore"
