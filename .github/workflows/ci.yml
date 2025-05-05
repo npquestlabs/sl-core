@@ -47,4 +47,16 @@ jobs:
 
       # Step 5: Runs the test script defined in your package.json
       - name: Run tests
+      # Map GitHub Secrets/Variables to process.env variables
+        env:
+          # Syntax: ${{ secrets.NAME_IN_GITHUB_SECRETS }}
+          DIRECT_URL: ${{ secrets.TEST_DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }} # Example mapping
+          APP_EMAIL: ${{ secrets.TEST_APP_EMAIL }}
+          APP_EMAIL_PASS: ${{ secrets.TEST_APP_EMAIL_PASS }}
+          JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+          CLIENT_URL: ${{ secrets.TEST_CLIENT_URL }}
+          # Syntax: ${{ vars.NAME_IN_GITHUB_VARIABLES }}
+          PORT: ${{ vars.TEST_PORT }}
+          NODE_ENV: test
         run: npm test

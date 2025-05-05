@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { ZodError, z } from 'zod'
 
-import envSchema from '../schemas/envSchema'
+import envSchema from '../schemas/env.schema'
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 

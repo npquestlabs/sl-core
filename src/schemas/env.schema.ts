@@ -2,7 +2,7 @@ import z from 'zod'
 
 export default z.object({
   environment: z
-    .enum(['development', 'production', 'local'])
+    .enum(['development', 'production', 'local', 'test'])
     .default('development'),
   port: z.string().transform((value) => {
     const parsedValue = Number(value)
