@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { User } from '../../generated/prisma'
-import { LocalUser } from './types'
+import { LocalUser } from '../types'
 
 export function sanitizeUser({
   id,

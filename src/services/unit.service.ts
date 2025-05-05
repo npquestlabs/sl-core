@@ -3,7 +3,7 @@ import { prisma } from '../configs/prisma'
 import { NotFoundError } from '../util/error'
 import { PaginationSchema } from '../schemas/extras.schema'
 import { z } from 'zod'
-import { PaginatedResponse } from '../util/types'
+import { PaginatedResponse } from '../types'
 import { Prisma } from '../../generated/prisma'
 
 export async function createUnit(

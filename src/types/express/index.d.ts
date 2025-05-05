@@ -1,4 +1,4 @@
-import { LocalUser } from '../../util/types'
+import { LocalUser } from '..'
 
 declare global {
   namespace Express {
