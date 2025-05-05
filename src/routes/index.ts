@@ -2,6 +2,7 @@ import express from 'express'
 import authRoutes from './auth.routes'
 import userRoutes from './user.routes'
 import complexRoutes from './complex.routes'
+import unitRoutes from './unit.routes'
 
 const router = express.Router()
 
@@ -13,5 +14,6 @@ router.get('/', (req, res) => {
 router.use('/auth', authRoutes)
 router.use('/users', userRoutes)
 router.use('/complexes', complexRoutes)
+router.use('/units', unitRoutes)
 
 export default router

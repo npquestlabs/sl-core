@@ -6,42 +6,78 @@ import * as vendorService from '../services/vendor.service'
 import * as userService from '../services/user.service'
 import { generateEmailToken } from '../util/token'
 import { sendPasswordResetEmail, sendVerificationEmail } from '../util/email'
+import { AppError } from '../util/error'
 
 export const registerLandlord = async (req: Request, res: Response) => {
-  const result = await landLordService.registerLandlordUser(req.body)
-  if (!result) {
-    return res.status(500).json({ error: 'Unable to register user' })
+  try {
+    const data = {
+      email: String(req.body.email),
+      firstName: String(req.body.firstName),
+      lastName: String(req.body.lastName),
+    } // our validateBody middleware ensures this
+
+    const emailVerificationToken = generateEmailToken(req.body.email)
+
+    await sendVerificationEmail(data, emailVerificationToken)
+    const result = await landLordService.registerLandlordUser(req.body)
+    if (!result) {
+      return res.status(500).json({ error: 'Unable to register user' })
+    }
+    res.status(201).json(result)
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.message })
+    }
+    throw error
   }
-  res.status(201).json(result)
-
-  const emailVerificationToken = generateEmailToken(result.user.email)
-
-  await sendVerificationEmail(result.user, emailVerificationToken)
 }
 
 export const registerTenant = async (req: Request, res: Response) => {
-  const result = await tenantService.registerTenantUser(req.body)
-  if (!result) {
-    return res.status(500).json({ error: 'Unable to register user' })
+  try {
+    const data = {
+      email: String(req.body.email),
+      firstName: String(req.body.firstName),
+      lastName: String(req.body.lastName),
+    } // our validateBody middleware ensures this
+
+    const emailVerificationToken = generateEmailToken(req.body.email)
+
+    await sendVerificationEmail(data, emailVerificationToken)
+    const result = await tenantService.registerTenantUser(req.body)
+    if (!result) {
+      return res.status(500).json({ error: 'Unable to register user' })
+    }
+    res.status(201).json(result)
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.message })
+    }
+    throw error
   }
-
-  res.status(201).json(result)
-
-  const emailVerificationToken = generateEmailToken(result.user.email)
-
-  await sendVerificationEmail(result.user, emailVerificationToken)
 }
 
 export const registerArtisan = async (req: Request, res: Response) => {
-  const result = await vendorService.registerVendorUser(req.body)
-  if (!result) {
-    return res.status(500).json({ error: 'Unable to register user' })
+  try {
+    const data = {
+      email: String(req.body.email),
+      firstName: String(req.body.firstName),
+      lastName: String(req.body.lastName),
+    } // our validateBody middleware ensures this
+
+    const emailVerificationToken = generateEmailToken(req.body.email)
+
+    await sendVerificationEmail(data, emailVerificationToken)
+    const result = await vendorService.registerVendorUser(req.body)
+    if (!result) {
+      return res.status(500).json({ error: 'Unable to register user' })
+    }
+    res.status(201).json(result)
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.message })
+    }
+    throw error
   }
-  res.status(201).json(result)
-
-  const emailVerificationToken = generateEmailToken(result.user.email)
-
-  await sendVerificationEmail(result.user, emailVerificationToken)
 }
 
 export const login = async (req: Request, res: Response) => {
@@ -67,7 +103,7 @@ export const updatePassword = async (req: Request, res: Response) => {
   }
   const user = await userService.updateUserPassword(userId, password)
   if (!user) {
-    return res.status(500).json({ error: 'Unable to update password' })
+    return res.status(500).json({ error: 'Failed to update password' })
   }
   return res.status(200).json({ success: true, message: 'Password updated!' })
 }

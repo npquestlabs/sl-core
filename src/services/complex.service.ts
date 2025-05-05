@@ -24,16 +24,16 @@ export async function createComplex(
 }
 
 export async function updateComplex(
-  complexId: string,
   updates: z.infer<typeof UpdateComplexSchema>,
+  where: Prisma.ComplexWhereUniqueInput,
+  include: Prisma.ComplexInclude = {},
 ) {
   const updatedComplex = await prisma.complex.update({
     data: {
       ...updates,
     },
-    where: {
-      id: complexId,
-    },
+    where,
+    include,
   })
 
   return updatedComplex ?? null
@@ -51,32 +51,41 @@ export async function getComplexById(complexId: string) {
   return complex
 }
 
+export async function getComplex(where: Prisma.ComplexWhereUniqueInput, include: Prisma.ComplexInclude = {}) {
+  const complex = await prisma.complex.findUnique({
+    where,
+    include,
+  })
+
+  return complex ?? null
+}
+
 export async function getComplexesOfLandlord(
   landlordId: string,
   pagination: z.infer<typeof PaginationSchema>,
 ): Promise<PaginatedResponse<Prisma.ComplexGetPayload<Record<string, never>>>> {
   const { page, limit, filter } = pagination
 
+  const whereClause: Prisma.ComplexWhereInput = {
+    landlordId: landlordId,
+    deletedAt: null,
+  }
+
+  console.log('landlordId', landlordId)
+
+  if (filter) {
+    whereClause.OR = [
+      { name: { contains: filter, mode: 'insensitive' } },
+      { description: { contains: filter, mode: 'insensitive' } },
+    ]
+  }
+
   const total = await prisma.complex.count({
-    where: {
-      landlordId: landlordId,
-      deletedAt: null,
-      OR: [
-        { name: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
   })
 
   const complexes = await prisma.complex.findMany({
-    where: {
-      landlordId: landlordId,
-      deletedAt: null,
-      OR: [
-        { name: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
     skip: (page - 1) * limit,
     take: limit,
     orderBy: {
@@ -89,4 +98,13 @@ export async function getComplexesOfLandlord(
   }
 
   return { data: complexes, meta: { limit, page, total } }
+}
+
+export async function deleteComplex(where: Prisma.ComplexWhereUniqueInput) {
+  const deletedComplex = await prisma.complex.update({
+    where,
+    data: { deletedAt: new Date() },
+  })
+
+  return deletedComplex ?? null
 }

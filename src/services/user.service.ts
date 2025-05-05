@@ -4,6 +4,18 @@ import { AppError } from '../util/error'
 import { z } from 'zod'
 import { UpdateUserSchema } from '../schemas/user.schema'
 
+export const isUnusedEmail = async (email: string) => {
+  const user = await prisma.user.findUnique({
+    where: { email },
+  })
+
+  if (user) {
+    throw new AppError('Email already in use', 400)
+  }
+
+  return true
+}
+
 export const updateUser = async (
   id: string,
   data: z.infer<typeof UpdateUserSchema>,

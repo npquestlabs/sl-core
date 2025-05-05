@@ -5,18 +5,20 @@ import { validateBody, validateQuery } from '../middlewares/validator.middleware
 import { authenticate, expect } from '../middlewares/auth.middleware'
 import { PaginationSchema } from '../schemas/extras.schema'
 import { CreateUnitSchema } from '../schemas/unit.schema'
-import { CreateComplexSchema } from '../schemas/complex.schema'
+import { CreateComplexSchema, UpdateComplexSchema } from '../schemas/complex.schema'
 
 const router = express.Router()
 
 router.use(authenticate)
 router.use(expect(['Landlord']))
 
+router.post('/', validateBody(CreateComplexSchema), complexController.createComplex)
 router.get('/', validateQuery(PaginationSchema), complexController.getLandlordComplexes)
 router.get('/:complexId', complexController.getLandLordComplex)
+router.patch('/:complexId', validateBody(UpdateComplexSchema), complexController.updateComplex)
+router.delete('/:complexId', complexController.deleteComplex)
 router.get('/:complexId/units', validateQuery(PaginationSchema), unitsController.getUnitsOfComplex)
-router.post('/', validateBody(CreateComplexSchema), complexController.createComplex)
 router.post('/:complexId/units', validateBody(CreateUnitSchema), unitsController.createUnit)
-router.get('/:complexId/units/:unitId', unitsController.getUnit)
+router.get('/:complexId/units/:unitId', unitsController.getUnitByComplexIdAndUnitIdParams)
 
 export default router

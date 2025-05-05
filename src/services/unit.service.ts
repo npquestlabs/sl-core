@@ -1,6 +1,6 @@
 import { CreateUnitSchema, UpdateUnitSchema } from '../schemas/unit.schema'
 import { prisma } from '../configs/prisma'
-import { AppError, NotFoundError } from '../util/error'
+import { NotFoundError } from '../util/error'
 import { PaginationSchema } from '../schemas/extras.schema'
 import { z } from 'zod'
 import { PaginatedResponse } from '../util/types'
@@ -36,6 +36,18 @@ export async function updateUnit(
   return updatedUnit ?? null
 }
 
+export async function getUnit(
+  where: Prisma.UnitWhereUniqueInput,
+  include: Prisma.UnitInclude = {},
+) {
+  const unit = await prisma.unit.findUnique({
+    where,
+    include,
+  })
+
+  return unit ?? null
+}
+
 export async function getUnitById(
   unitId: string,
   include: Prisma.UnitInclude = {},
@@ -58,26 +70,24 @@ export async function getUnitsInComplex(
 ): Promise<PaginatedResponse<Prisma.UnitGetPayload<Record<string, never>>>> {
   const { page, limit, filter } = pagination
 
+  const whereClause: Prisma.UnitWhereInput = {
+    complexId: complexId,
+    deletedAt: null,
+  }
+
+  if (filter) {
+    whereClause.OR = [
+      { label: { contains: filter, mode: 'insensitive' } },
+      { description: { contains: filter, mode: 'insensitive' } },
+    ]
+  }
+
   const total = await prisma.unit.count({
-    where: {
-      complexId: complexId,
-      deletedAt: null,
-      OR: [
-        { label: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
   })
 
   const units = await prisma.unit.findMany({
-    where: {
-      complexId: complexId,
-      deletedAt: null,
-      OR: [
-        { label: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
     orderBy: {
       createdAt: 'desc',
     },
@@ -94,26 +104,24 @@ export async function getUnitsOfTenant(
 ): Promise<PaginatedResponse<Prisma.UnitGetPayload<Record<string, never>>>> {
   const { page, limit, filter } = pagination
 
+  const whereClause: Prisma.UnitWhereInput = {
+    tenantId: tenantId,
+    deletedAt: null,
+  }
+
+  if (filter) {
+    whereClause.OR = [
+      { label: { contains: filter, mode: 'insensitive' } },
+      { description: { contains: filter, mode: 'insensitive' } },
+    ]
+  }
+
   const total = await prisma.unit.count({
-    where: {
-      tenantId: tenantId,
-      deletedAt: null,
-      OR: [
-        { label: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
   })
 
   const units = await prisma.unit.findMany({
-    where: {
-      tenantId: tenantId,
-      deletedAt: null,
-      OR: [
-        { label: { contains: filter, mode: 'insensitive' } },
-        { description: { contains: filter, mode: 'insensitive' } },
-      ],
-    },
+    where: whereClause,
     orderBy: {
       createdAt: 'desc',
     },
@@ -124,50 +132,80 @@ export async function getUnitsOfTenant(
   return { data: units, meta: { limit, page, total } }
 }
 
-export async function removeTenant(unitId: string, tenantId: string) {
-  // Validate that the unit exists
-  const unit = await prisma.unit.findUnique({ where: { id: unitId } })
-  if (!unit) {
-    throw new NotFoundError('Unit not found')
+/**
+ * Removes a tenant association from a unit, but only if the unit
+ * exists and is currently associated with the specified tenantId.
+ *
+ * @param whereClause - Prisma WhereUniqueInput to identify the specific unit (e.g., { id: 'unit-uuid' }).
+ * @param tenantId - The ID of the tenant that is expected to be currently assigned to the unit.
+ * @returns The updated Unit object with tenantId set to null, or null if the unit
+ *          was not found or was not associated with the specified tenantId.
+ */
+export async function removeTenant(
+  whereClause: Prisma.UnitWhereUniqueInput,
+  tenantId: string,
+): Promise<Prisma.UnitGetPayload<Record<string, never>> | null> {
+  try {
+    const updatedUnit = await prisma.unit.update({
+      where: {
+        ...whereClause,
+        tenantId: tenantId,
+      },
+      data: {
+        tenant: {
+          disconnect: true,
+        },
+      },
+    })
+    return updatedUnit
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      console.warn(
+        `RemoveTenant failed for unit matching ${JSON.stringify(whereClause)} with tenantId ${tenantId}: Unit not found or tenant mismatch.`,
+      )
+      return null
+    }
+    console.error('Unexpected error during removeTenant:', error)
+    throw error
   }
-
-  // Ensure the unit is currently assigned to the specified tenant
-  if (unit.tenantId !== tenantId) {
-    throw new AppError('Tenant not assigned to this unit', 400)
-  }
-
-  // Remove the tenant from the unit
-  const updatedUnit = await prisma.unit.update({
-    where: { id: unitId },
-    data: { tenantId: null },
-  })
-
-  return updatedUnit ?? null
 }
 
-export async function assignTenant(unitId: string, tenantId: string) {
-  // Validate that the unit exists
-  const unit = await prisma.unit.findUnique({ where: { id: unitId } })
-  if (!unit) {
-    throw new AppError('Unit not found', 404)
+export async function assignTenant(
+  whereClause: Prisma.UnitWhereUniqueInput,
+  tenantId: string,
+) {
+  try {
+    const updatedUnit = await prisma.unit.update({
+      where: { ...whereClause, tenantId: null },
+      data: {
+        tenant: {
+          connect: { id: tenantId },
+        },
+      },
+    })
+    return updatedUnit
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      console.warn(
+        `AssignTenant failed for unit matching ${JSON.stringify(whereClause)}: Unit not found or already has a tenant.`,
+      )
+      return null
+    }
+    throw error
   }
+}
 
-  // Validate that the tenant exists
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
-  if (!tenant) {
-    throw new AppError('Tenant not found', 404)
-  }
-
-  // Ensure the unit is not already assigned to another tenant
-  if (unit.tenantId) {
-    throw new AppError('Unit is already assigned to a tenant', 400)
-  }
-
-  // Assign the tenant to the unit
-  const updatedUnit = await prisma.unit.update({
-    where: { id: unitId },
-    data: { tenantId },
+export async function deleteUnit(where: Prisma.UnitWhereUniqueInput) {
+  const deletedUnit = await prisma.unit.update({
+    where,
+    data: { deletedAt: new Date() },
   })
 
-  return updatedUnit ?? null
+  return deletedUnit ?? null
 }
