@@ -167,10 +167,23 @@ export const getUnitWithPopulatedComplex = async (
  * Assigns a tenant to a unit.
  */
 export const assignTenant = async (req: Request, res: Response) => {
+  const user = req.user
+
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  if (!user.landlord) {
+    return res.status(403).json({ error: 'Permission denied' })
+  }
+
   const { unitId, tenantId } = req.params
 
-  // Assign the tenant to the unit
-  const updatedUnit = await unitService.assignTenant(unitId, tenantId)
+  if (!unitId || !tenantId) {
+    return res.status(400).json({ error: 'Invalid params' })
+  }
+
+  const updatedUnit = await unitService.assignTenant({ id: unitId, complex: { landlordId: user.landlord.id } }, tenantId)
 
   if (!updatedUnit) {
     res.status(500).json({ error: 'Tenant assignment failed' })
@@ -187,13 +200,26 @@ export const assignTenant = async (req: Request, res: Response) => {
  * Removes a tenant from a unit.
  */
 export const removeTenant = async (req: Request, res: Response) => {
+  const user = req.user
+
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  if (!user.landlord) {
+    return res.status(403).json({ error: 'Permission denied' })
+  }
+
   const { unitId, tenantId } = req.params
 
-  // Remove the tenant from the unit
-  const updatedUnit = await unitService.removeTenant(unitId, tenantId)
+  if (!unitId || !tenantId) {
+    return res.status(400).json({ error: 'Invalid params' })
+  }
+
+  const updatedUnit = await unitService.removeTenant({ id: unitId, complex: { landlordId: user.landlord.id } }, tenantId)
 
   if (!updatedUnit) {
-    res.status(500).json({ error: 'Tenant removal failed' })
+    return res.status(500).json({ error: 'Tenant removal failed' })
   }
 
   return res.status(200).json({
