@@ -1,7 +1,20 @@
 import { app, port } from './configs/server'
-import { prisma } from './configs/prisma'
+import { connectPrisma, prisma } from './configs/prisma'
 import config from './configs/environment'
 import { logger } from './configs/logger'
+import { connectEmail } from './configs/email'
+
+Promise.all([connectPrisma(), connectEmail()])
+  .then(() => {
+    logger.info('Connected to the database and email service')
+  })
+  .catch((error) => {
+    logger.error('Error during initialization:', error)
+    process.exit(1)
+  })
+  .finally(() => {
+    logger.info('Initialization complete')
+  })
 
 const server = app.listen(port, () => {
   logger.info(`Server is running on ${config.port}`)
@@ -9,7 +22,7 @@ const server = app.listen(port, () => {
 
 process.on('exit', () => {
   logger.info('Exiting Server...')
-  prisma.$disconnect()
+  return prisma.$disconnect()
 })
 
 server.on('error', (error) => {

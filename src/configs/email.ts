@@ -9,15 +9,15 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-transporter.verify((error, success) => {
-  if (error || !success) {
-    console.error(
-      '🚨 Error connecting to email transporter:',
-      error || 'Unknown error',
-    )
+export async function connectEmail() {
+  const result = await transporter.verify()
+  if (result) {
+    console.log('Email transporter is ready to send emails')
   } else {
-    console.log('✉️ Email transporter is ready to send messages')
+    console.error('Error setting up email transporter')
   }
-})
+
+  return result
+}
 
 export default { transporter }
