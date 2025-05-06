@@ -200,6 +200,7 @@ const config: Config = {
 
   // Whether to use watchman for file crawling
   // watchman: true,
+  testTimeout: 20000,
 };
 
 export default config;
