@@ -21,16 +21,14 @@ export async function createUnit(
 }
 
 export async function updateUnit(
-  unitId: string,
+  where: Prisma.UnitWhereUniqueInput,
   updates: z.infer<typeof UpdateUnitSchema>,
 ) {
   const updatedUnit = await prisma.unit.update({
     data: {
       ...updates,
     },
-    where: {
-      id: unitId,
-    },
+    where,
   })
 
   return updatedUnit ?? null

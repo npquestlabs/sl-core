@@ -139,13 +139,25 @@ export const createUnit = async (req: Request, res: Response) => {
 
 export const updateUnit = async (req: Request, res: Response) => {
   const { unitId } = req.params
-  if (!unitId) {
-    return res.status(400).json({ error: 'UnitId cannot be null' })
+  const user = req.user
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' })
   }
-  const updatedUnit = await unitService.updateUnit(unitId, req.body)
+
+  if (!user.landlord) {
+    return res.status(403).json({ error: 'Permission denied' })
+  }
+  
+  if (!unitId) {
+    return res.status(400).json({ error: 'Invalid params' })
+  }
+
+  const updatedUnit = await unitService.updateUnit({ id: unitId, complex: { landlordId: user.landlord.id }}, req.body)
+  
   if (!updatedUnit) {
     return res.status(400).json({ error: 'Failed to update unit' })
   }
+  
   return res.status(200).json(updatedUnit)
 }
 
