@@ -128,7 +128,11 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
-  await prisma.unit.deleteMany({ where: { complexId: testComplex.id } })
+  try{
+    await prisma.unit.deleteMany({ where: { complexId: testComplex.id } })
+  } catch(error) {
+    console.error('Error deleting units:', error)
+  }
 })
 
 describe('Unit Routes', () => {
