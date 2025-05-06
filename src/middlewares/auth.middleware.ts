@@ -53,3 +53,19 @@ export function expect(allowed: ('Tenant' | 'Landlord' | 'Vendor')[]) {
     next()
   }
 }
+
+export function isVerified(req: Request, res: Response, next: NextFunction) {
+  const user = req.user
+
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  const permitted = user.isVerified
+
+  if (!permitted) {
+    return res.status(403).json({ error: 'User not verified' })
+  }
+
+  next()
+}

@@ -4,17 +4,18 @@
   "description": "",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "npx prisma generate && dotenv -e .env.development -- nodemon --exec ts-node --files src/index.ts",
+    "dev": "npx prisma generate && nodemon --exec ts-node --files src/index.ts",
     "build": "npx prisma generate && tsc",
     "start": "npx prisma generate && node dist/index.js",
     "lint": "eslint src/**/*.ts --fix",
-    "test": "npx prisma generate && dotenv -e .env.test -- jest",
+    "test": "npx prisma generate && dotenv -e .env.testing -- jest",
     "format": "prettier src/**/*.ts --write"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@faker-js/faker": "^9.7.0",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",

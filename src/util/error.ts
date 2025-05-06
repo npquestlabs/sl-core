@@ -20,7 +20,7 @@ export class NotFoundError extends AppError {
 }
 
 export class LoginError extends AppError {
-  constructor(message: string = 'Incorrect email or password') {
+  constructor(message: string = 'Invalid email or password') {
     super(message, 401)
     this.name = 'LoginError'
     Object.setPrototypeOf(this, LoginError.prototype)

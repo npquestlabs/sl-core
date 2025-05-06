@@ -41,7 +41,10 @@ export const getUnit = async (req: Request, res: Response) => {
   return res.status(200).json(unit)
 }
 
-export const getUnitByComplexIdAndUnitIdParams = async (req: Request, res: Response) => {
+export const getUnitByComplexIdAndUnitIdParams = async (
+  req: Request,
+  res: Response,
+) => {
   const user = req.user
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized' })
@@ -56,7 +59,10 @@ export const getUnitByComplexIdAndUnitIdParams = async (req: Request, res: Respo
     return res.status(400).json({ error: 'Invalid params' })
   }
 
-  const unit = await unitService.getUnit({ id: unitId, complex: { id: complexId, landlordId: user.landlord.id } })
+  const unit = await unitService.getUnit({
+    id: unitId,
+    complex: { id: complexId, landlordId: user.landlord.id },
+  })
   if (!unit) {
     return res.status(404).json({ error: 'Unit not found' })
   }
@@ -79,7 +85,10 @@ export const getUnitsOfComplex = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid params' })
   }
 
-  const landlordComplex = await complexService.getComplex({ id: complexId, landlordId: user.landlord.id });
+  const landlordComplex = await complexService.getComplex({
+    id: complexId,
+    landlordId: user.landlord.id,
+  })
 
   if (!landlordComplex) {
     return res.status(403).json({ error: 'Permission denied' })
@@ -108,6 +117,15 @@ export const createUnit = async (req: Request, res: Response) => {
 
   if (!complexId) {
     return res.status(400).json({ error: 'Invalid params' })
+  }
+
+  const complex = await complexService.getComplex({
+    id: complexId,
+    landlordId: user.landlord.id,
+  })
+
+  if (!complex) {
+    return res.status(404).json({ error: 'Complex not found' })
   }
 
   const createdUnit = await unitService.createUnit(complexId, req.body)
@@ -183,7 +201,10 @@ export const assignTenant = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid params' })
   }
 
-  const updatedUnit = await unitService.assignTenant({ id: unitId, complex: { landlordId: user.landlord.id } }, tenantId)
+  const updatedUnit = await unitService.assignTenant(
+    { id: unitId, complex: { landlordId: user.landlord.id } },
+    tenantId,
+  )
 
   if (!updatedUnit) {
     res.status(500).json({ error: 'Tenant assignment failed' })
@@ -216,7 +237,10 @@ export const removeTenant = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid params' })
   }
 
-  const updatedUnit = await unitService.removeTenant({ id: unitId, complex: { landlordId: user.landlord.id } }, tenantId)
+  const updatedUnit = await unitService.removeTenant(
+    { id: unitId, complex: { landlordId: user.landlord.id } },
+    tenantId,
+  )
 
   if (!updatedUnit) {
     return res.status(500).json({ error: 'Tenant removal failed' })
@@ -245,7 +269,10 @@ export const deleteUnit = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid params' })
   }
 
-  const deletedUnit = await unitService.deleteUnit({id: unitId, complex: { landlordId: user.landlord.id }})
+  const deletedUnit = await unitService.deleteUnit({
+    id: unitId,
+    complex: { landlordId: user.landlord.id },
+  })
   if (!deletedUnit) {
     return res.status(404).json({ error: 'Unit not found' })
   }
