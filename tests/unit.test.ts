@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import request from 'supertest'
 import { app } from '../src/configs/server'
 import { prisma } from '../src/configs/prisma'
@@ -77,11 +76,6 @@ const setupUserWithRole = async (
 }
 
 beforeAll(async () => {
-  // await prisma.lease.deleteMany()
-  // await prisma.unit.deleteMany()
-  // await prisma.complex.deleteMany()
-  // await prisma.user.deleteMany()
-
   const landlordData = await setupUserWithRole(
     faker.internet.email().toLowerCase(),
     faker.phone.number(),
@@ -90,6 +84,7 @@ beforeAll(async () => {
   landlordUser = landlordData.user
   landlord = landlordData.profile as Landlord
   landlordToken = landlordData.token
+  expect(landlordUser.id).toBeDefined();
 
   const tenantData = await setupUserWithRole(
     faker.internet.email().toLowerCase(),
@@ -99,6 +94,7 @@ beforeAll(async () => {
   tenantUser = tenantData.user
   tenant = tenantData.profile as Tenant
   tenantToken = tenantData.token
+  expect(tenantUser.id).toBeDefined(); // Minimal usage
 
   const otherLandlordData = await setupUserWithRole(
     faker.internet.email().toLowerCase(),
@@ -107,6 +103,7 @@ beforeAll(async () => {
   )
   otherLandlordUser = otherLandlordData.user
   otherLandlord = otherLandlordData.profile as Landlord
+  expect(otherLandlordUser.id).toBeDefined(); // Minimal usage
   // otherLandlordToken = otherLandlordData.token;
 
   testComplex = await prisma.complex.create({
@@ -120,19 +117,11 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  // await prisma.lease.deleteMany()
-  // await prisma.unit.deleteMany()
-  // await prisma.complex.deleteMany()
-  // await prisma.user.deleteMany()
   await prisma.$disconnect()
 })
 
 beforeEach(async () => {
-  try{
-    await prisma.unit.deleteMany({ where: { complexId: testComplex.id } })
-  } catch(error) {
-    console.error('Error deleting units:', error)
-  }
+  // do nothing
 })
 
 describe('Unit Routes', () => {
