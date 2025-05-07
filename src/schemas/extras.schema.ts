@@ -15,5 +15,5 @@ export const PaginationSchema = z.object({
     .refine((val) => !isNaN(val) && val > 0, {
       message: 'Page must be a positive number',
     }),
-  filter: z.string().max(24, 'Filter text too long').optional(),
+  filter: z.string().max(99, 'Filter text too long').optional(),
 })
