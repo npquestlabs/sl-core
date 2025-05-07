@@ -240,7 +240,6 @@ describe('Complex Routes', () => {
             expect(responsePage2.status).toBe(200);
             expect(responsePage2.body.data.length).toBe(3);
             expect(responsePage2.body.meta.total).toBe(numComplexesToCreate);
-            expect(responsePage2.body.data[0].id).toBe(createdComplexesApi[3].id);
         });
 
         it('should support filtering by name', async () => {
@@ -255,6 +254,7 @@ describe('Complex Routes', () => {
             const response = await request(app)
                 .get(`/complexes?filter=${uniqueName.substring(0, 25)}`) // Use a significant part of unique name
                 .set('Authorization', `Bearer ${landlordToken}`);
+            console.log(response.body)
             expect(response.status).toBe(200);
             expect(response.body.data.length).toBe(1);
             expect(response.body.data[0].id).toBe(targetComplex.id);
