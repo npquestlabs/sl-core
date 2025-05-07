@@ -6,14 +6,11 @@ import { faker } from '@faker-js/faker'
 
 
 beforeAll(async () => {
-    await prisma.user.deleteMany();
+    // do nothing
 });
 
 afterAll(async () => {
-    await prisma.user.deleteMany();
-    await prisma.tenant.deleteMany();
-    await prisma.landlord.deleteMany();
-    await prisma.vendor.deleteMany();
+    // do nothing
     await prisma.$disconnect();
 });
 

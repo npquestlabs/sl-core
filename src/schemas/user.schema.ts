@@ -42,10 +42,13 @@ export const UpdateTenantSchema = z
 
 export const UpdateLandlordSchema = z
   .object({
-    deletedAt: z.date().optional(),
     proofOfOwnership: z.string().url('Invalid URL').optional(),
     bankName: z.string().optional(),
-    bankAccount: z.string().optional(),
+    bankAccount: z
+      .string()
+      .min(8, 'Invalid bank account number')
+      .max(20, 'Invalid bank account number')
+      .optional(),
     mobileMoneyNumber: z.string().optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, {
@@ -66,10 +69,6 @@ export const UpdateUserSchema = z
   .object({
     firstName: z.string().min(1, 'First name is required').optional(),
     lastName: z.string().min(1, 'Last name is required').optional(),
-    phone: z
-      .string()
-      .min(10, 'Phone number must be at least 10 digits')
-      .optional(),
     notificationPrefs: z
       .object({
         email: z.boolean().default(true),
