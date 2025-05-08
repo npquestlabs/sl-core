@@ -4,11 +4,11 @@
   "description": "",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "dotenv -e .env.development -- nodemon --exec ts-node --files src/index.ts",
+    "dev": "nodemon --exec ts-node --files src/index.ts",
     "build": "npx prisma generate && tsc",
     "start": "node dist/index.js",
     "lint": "eslint src/**/*.ts --fix",
-    "test": "dotenv -e .env.testing -- jest",
+    "test": "jest",
     "format": "prettier src/**/*.ts --write"
   },
   "keywords": [],

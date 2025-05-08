@@ -1,9 +1,33 @@
 import { connectPrisma } from '../src/configs/prisma'
 // import { connectEmail } from '../src/configs/email';
 
+import fs from 'fs'
+import path from 'path'
+import dotenv from 'dotenv'
+
+const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
+
+console.log('!!! JEST_ENV_CHECK.TS IS EXECUTING !!!')
+process.stdout.write('!!! JEST_ENV_CHECK.TS IS EXECUTING (STDOUT) !!!\n')
+
 export default async () => {
   console.log('\n Jest Global Setup: Starting...')
   try {
+
+    if (!isCI) {
+      const envFile = path.resolve(__dirname, '.env.testing')
+      if (!fs.existsSync(envFile)) {
+        console.error(
+          '⛔  Missing required .env.testing file. Aborting local tests.',
+        )
+        process.exit(1)
+      }
+      dotenv.config({ path: envFile })
+    } else {
+      console.log('ℹ️  Running in CI: skipping .env.testing check.')
+    }
+    console.log('Jest Global Setup: Environment variables loaded.')
+    console.log('Jest Global Setup: Completed Successfully.')
     await Promise.all([
       connectPrisma(),
       // connectEmail(),
