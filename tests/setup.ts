@@ -15,7 +15,7 @@ export default async () => {
   try {
 
     if (!isCI) {
-      const envFile = path.resolve(__dirname, '.env.testing')
+      const envFile = path.resolve(process.cwd(), '.env.testing')
       if (!fs.existsSync(envFile)) {
         console.error(
           '⛔  Missing required .env.testing file. Aborting local tests.',
