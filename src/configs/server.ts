@@ -1,4 +1,5 @@
 import express from 'express'
+import 'express-async-errors'
 import helmet from 'helmet'
 import compression from 'compression'
 import cors from 'cors'
@@ -9,6 +10,7 @@ import morgan from 'morgan'
 
 import config from './environment'
 import limiter from './rateLimiterConfig'
+import errorHandler from '../middlewares/error.middleware'
 
 import routes from '../routes'
 
@@ -24,7 +26,7 @@ app.use(compression())
 app.use(
   cors({
     origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['OPTIONS', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }),
 )
@@ -47,6 +49,9 @@ app.use(morgan('combined'))
 
 // Use routes
 app.use('/', routes)
+
+// Error handling middleware
+app.use(errorHandler)
 
 const port = config.port
 

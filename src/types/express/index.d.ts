@@ -1,9 +1,9 @@
-import { User } from '../../../generated/prisma'
+import { LocalUser } from '..'
 
 declare global {
   namespace Express {
     interface Request {
-      user?: User
+      user?: LocalUser
     }
   }
 }
