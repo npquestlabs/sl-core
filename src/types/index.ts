@@ -1,4 +1,4 @@
-import { Landlord, Tenant } from '../../generated/prisma'
+import { Landlord, Tenant, Vendor } from '../../generated/prisma'
 
 export type LocalUser = {
   id: string
@@ -8,7 +8,7 @@ export type LocalUser = {
   isVerified: boolean
   landlord: Landlord | null
   tenant: Tenant | null
-  vendor: Tenant | null
+  vendor: Vendor | null
 }
 
 export type PaginatedResponse<T> = {
