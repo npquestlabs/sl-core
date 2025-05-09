@@ -207,3 +207,38 @@ export async function deleteUnit(where: Prisma.UnitWhereUniqueInput) {
 
   return deletedUnit ?? null
 }
+
+
+export async function getUnitsOfLandlord(
+  landlordId: string,
+  pagination: z.infer<typeof PaginationSchema>,
+): Promise<PaginatedResponse<Prisma.UnitGetPayload<Record<string, never>>>> {
+  const { page, limit, filter } = pagination
+
+  const whereClause: Prisma.UnitWhereInput = {
+    complex: { landlordId },
+    deletedAt: null,
+  }
+
+  if (filter) {
+    whereClause.OR = [
+      { label: { contains: filter, mode: 'insensitive' } },
+      { description: { contains: filter, mode: 'insensitive' } },
+    ]
+  }
+
+  const total = await prisma.unit.count({
+    where: whereClause,
+  })
+
+  const units = await prisma.unit.findMany({
+    where: whereClause,
+    orderBy: {
+      createdAt: 'desc',
+    },
+    skip: (page - 1) * limit,
+    take: limit,
+  })
+
+  return { data: units, meta: { limit, page, total } }
+}
