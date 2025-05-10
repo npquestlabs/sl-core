@@ -61,14 +61,14 @@ export const createLease = async (
     throw new AppError('Unit does not belong to this landlord', 403)
   }
 
-  if (unit.rentAmount == null || unit.rentAmountCurrency == null) {
+  if (unit.rentAmount == null || unit.rentCurrency == null) {
     throw new AppError(
       `Unit ${unitId} is missing rent amount or currency information.`,
       400,
     )
   }
   const rentAmount = unit.rentAmount
-  const currency = unit.rentAmountCurrency
+  const currency = unit.rentCurrency
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
   if (!tenant) {

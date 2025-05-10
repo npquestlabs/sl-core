@@ -7,9 +7,9 @@ export const CreateUnitSchema = z.object({
     desciption: z.string().optional(),
     notes: z.string().optional(),
     rentAmount: z.number().optional(),
-    rentAmountCurrency: z.string().optional(),
+    rentCurrency: z.string().optional(),
     rentAdvance: z.number().optional(),
-    rentAmountCappedSeconds: z.number().optional(),
+    rentDuration: z.number().optional(),
 })
 
 export const UpdateUnitSchema = z.object({
@@ -18,9 +18,9 @@ export const UpdateUnitSchema = z.object({
     desciption: z.string().optional(),
     notes: z.string().optional(),
     rentAmount: z.number().optional(),
-    rentAmountCurrency: z.string().optional(),
+    rentCurrency: z.string().optional(),
     rentAdvance: z.number().optional(),
-    rentAmountCappedSeconds: z.number().optional(),
+    rentDuration: z.number().optional(),
 }).refine((obj) => Object.keys(obj).length > 0, {
     message: 'At least one allowed field is required for update',
 })

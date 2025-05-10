@@ -53,7 +53,7 @@ const generateUnitData = (labelSuffix: string = '') => ({
   type: UnitType.APARTMENT,
   description: 'A cozy apartment unit for testing',
   rentAmount: parseFloat(faker.finance.amount({ min: 300, max: 1500, dec: 2 })),
-  rentAmountCurrency: 'GHS',
+  rentCurrency: 'GHS',
 });
 
 const generateComplexData = (nameSuffix: string = '') => ({
