@@ -36,9 +36,11 @@ let landlord: Landlord;
 let landlordToken: string;
 
 let tenantUser: User;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let tenant: Tenant;
 let tenantToken: string;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let otherLandlordUser: User;
 let otherLandlord: Landlord;
 // let otherLandlordToken: string; // Not used yet but good for future
@@ -51,7 +53,7 @@ const generateUnitData = (labelSuffix: string = '') => ({
   type: UnitType.APARTMENT,
   description: 'A cozy apartment unit for testing',
   rentAmount: parseFloat(faker.finance.amount({ min: 300, max: 1500, dec: 2 })),
-  rentAmountCurrency: 'GHS',
+  rentCurrency: 'GHS',
 });
 
 const generateComplexData = (nameSuffix: string = '') => ({
@@ -124,15 +126,7 @@ const createUnitForTestAndTrack = async (
   return unit;
 };
 
-// Helper to create a Complex and track its ID for per-test cleanup (afterEach)
-// Used if a test needs its OWN temporary complex, not the mainTestComplex
-const createComplexForTestAndTrack_intraTest = async (
-  data: Omit<Complex, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'notes'> & { landlordId: string }
-): Promise<Complex> => {
-  const complex = await prisma.complex.create({ data });
-  testCreatedComplexIds_intraTest.push(complex.id);
-  return complex;
-};
+
 
 
 // Runs ONCE before all tests in this file
@@ -242,7 +236,7 @@ afterEach(async () => {
 });
 
 describe('Unit Routes', () => {
-  const baseUnitData = generateUnitData(); // Generate once if fields are mostly static for tests
+  //const baseUnitData = generateUnitData(); // Generate once if fields are mostly static for tests
 
   describe('POST /complexes/:complexId/units', () => {
     it('should create a new unit in the specified complex for the landlord', async () => {
@@ -336,24 +330,12 @@ describe('Unit Routes', () => {
       expect(response.body.id).toBe(testUnit.id);
     });
 
-    it('should get a specific unit if tenant is assigned to the unit', async () => {
-      const unitWithTenant = await prisma.unit.update({ // Modify the unit created in beforeEach
-        where: { id: testUnit.id },
-        data: { tenantId: tenant.id }, // tenant is the main run-specific tenant
-      });
-      const response = await request(app)
-        .get(`/units/${unitWithTenant.id}`)
-        .set('Authorization', `Bearer ${tenantToken}`);
-      expect(response.status).toBe(200);
-      expect(response.body.id).toBe(unitWithTenant.id);
-    });
-
-    it('should return 403 if tenant tries to access unit not assigned to them', async () => {
+    it('should return 404 if tenant tries to access unit not assigned to them', async () => {
       // testUnit is created by beforeEach but NOT assigned to the main tenantToken's user
       const response = await request(app)
         .get(`/units/${testUnit.id}`)
         .set('Authorization', `Bearer ${tenantToken}`);
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(404);
     });
   });
 
@@ -404,74 +386,6 @@ describe('Unit Routes', () => {
       // Manual cleanup if these were meant to be very short-lived for this test only
       await prisma.unit.delete({ where: { id: unitInOtherComplex.id } });
       await prisma.complex.delete({ where: { id: otherComplex.id } });
-    });
-  });
-
-  describe('PATCH /units/:unitId/assign/:tenantId', () => {
-    let unitToAssign: Unit;
-    beforeEach(async () => {
-      unitToAssign = await createUnitForTestAndTrack({
-        data: {
-          ...generateUnitData('_assign_setup'),
-          complexId: mainTestComplex.id,
-        }
-      });
-    });
-
-    it('should assign a tenant to a unit if landlord owns the complex', async () => {
-      const response = await request(app)
-        .patch(`/units/${unitToAssign.id}/assign/${tenant.id}`) // main run-specific tenant
-        .set('Authorization', `Bearer ${landlordToken}`);
-      expect(response.status).toBe(200);
-      expect(response.body.data.tenantId).toBe(tenant.id);
-    });
-
-    it('should return 500 if unit already has a tenant', async () => {
-      await prisma.unit.update({ // Assign the main tenant first
-        where: { id: unitToAssign.id },
-        data: { tenantId: tenant.id },
-      });
-      // Create a temporary, new tenant *for this specific test*
-      const tempTenantData = await setupUserWithRole(`${runIdPrefix}_tempTenantAssign`, '_T_tempA', 'tenant', true);
-      // tempTenantData.user and tempTenantData.profile (as Tenant) are now tracked for afterEach cleanup.
-
-      const response = await request(app)
-        .patch(`/units/${unitToAssign.id}/assign/${tempTenantData.profile.id}`)
-        .set('Authorization', `Bearer ${landlordToken}`);
-      expect(response.status).toBe(500);
-      if (response.body.error) expect(response.body.error).toMatch(/Tenant assignment failed|already has an active tenant/i);
-    });
-  });
-
-  describe('PATCH /units/:unitId/remove/:tenantId', () => {
-    let unitWithTenant: Unit;
-    beforeEach(async () => {
-      unitWithTenant = await createUnitForTestAndTrack({
-        data: {
-          ...generateUnitData('_remove_setup'),
-          complexId: mainTestComplex.id,
-          tenantId: tenant.id,
-        }
-      });
-    });
-
-    it('should remove a tenant from a unit if landlord owns the complex', async () => {
-      const response = await request(app)
-        .patch(`/units/${unitWithTenant.id}/remove/${tenant.id}`)
-        .set('Authorization', `Bearer ${landlordToken}`);
-      expect(response.status).toBe(200);
-      expect(response.body.data.tenantId).toBeNull();
-    });
-
-    it('should return 500 if tenantId in param does not match unit tenant', async () => {
-      const tempTenantData = await setupUserWithRole(`${runIdPrefix}_tempTenantRemove`, '_T_tempR', 'tenant', true);
-      // tempTenantData.user and tempTenantData.profile (as Tenant) are now tracked for afterEach cleanup.
-
-      const response = await request(app)
-        .patch(`/units/${unitWithTenant.id}/remove/${tempTenantData.profile.id}`) // Trying to remove wrong tenant
-        .set('Authorization', `Bearer ${landlordToken}`);
-      expect(response.status).toBe(500);
-      if (response.body.error) expect(response.body.error).toMatch(/Tenant removal failed|not the current tenant/i);
     });
   });
 

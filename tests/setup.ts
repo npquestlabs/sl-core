@@ -7,15 +7,12 @@ import dotenv from 'dotenv'
 
 const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
 
-console.log('!!! JEST_ENV_CHECK.TS IS EXECUTING !!!')
-process.stdout.write('!!! JEST_ENV_CHECK.TS IS EXECUTING (STDOUT) !!!\n')
-
 export default async () => {
   console.log('\n Jest Global Setup: Starting...')
   try {
 
     if (!isCI) {
-      const envFile = path.resolve(__dirname, '.env.testing')
+      const envFile = path.resolve(process.cwd(), '.env.testing')
       if (!fs.existsSync(envFile)) {
         console.error(
           '⛔  Missing required .env.testing file. Aborting local tests.',
@@ -27,7 +24,7 @@ export default async () => {
       console.log('ℹ️  Running in CI: skipping .env.testing check.')
     }
     console.log('Jest Global Setup: Environment variables loaded.')
-    console.log('Jest Global Setup: Completed Successfully.')
+    
     await Promise.all([
       connectPrisma(),
       // connectEmail(),
