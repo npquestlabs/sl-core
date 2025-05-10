@@ -192,9 +192,9 @@ model Unit {
   description String?
   notes       String?
 
-  rentAmount              Decimal? @map("rent_amount") @db.Decimal(10, 2)
-  rentAmountCurrency      String?  @default("GHS") @map("rent_amount_currency") @db.VarChar(3)
-  rentAmountCappedSeconds Int?     @map("rent_amount_capped_seconds")
+  rentAmount   Decimal? @map("rent_amount") @db.Decimal(10, 2)
+  rentCurrency String?  @default("GHS") @map("rent_currency") @db.VarChar(3)
+  rentDuration Int?     @map("rent_duration")
 
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
