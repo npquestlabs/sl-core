@@ -113,3 +113,21 @@ export const loginWithToken = async (req: Request, res: Response) => {
   const result = await authService.loginWithToken(token)
   res.status(200).json(result)
 }
+
+
+export const sendVerificationLink = async (req: Request, res: Response) => {
+  const user = req.user
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  if (user.isVerified) {
+    return res.status(400).json({ error: 'User already verified' })
+  }
+
+  const { email } = req.body
+
+  const emailVerificationToken = generateEmailToken(email)
+  await sendVerificationEmail(user, emailVerificationToken)
+  return res.status(200).json({ message: 'Verification link sent!' })
+}
