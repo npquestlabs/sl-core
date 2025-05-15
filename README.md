@@ -39,10 +39,15 @@ Local setup guide for the SmartLandlord backend.
     *   Create a `.env.testing` file in the project root.
     *   Reach out to [nisaacdz](https://github.com/nisaacdz) for **testing-specific** environment variables and paste them into `.env.testing`.
 
-2.  **Run Tests:**
+2.  **Run All Tests:**
     ```bash
     npm run test
     ```
-    This uses `.env.testing` for test configurations.
 
+3. **Run Specific Test:**
+    ```bash
+    npm run test tests/auth.test.ts
+    ```
+
+This uses `.env.testing` for test configurations.
 ---
