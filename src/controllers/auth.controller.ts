@@ -92,7 +92,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
   await sendPasswordResetEmail(email, token)
   return res
     .status(200)
-    .json({ success: true, message: 'Password reset url sent to email!' })
+    .json({ message: 'Password reset url sent to email!' })
 }
 
 export const updatePassword = async (req: Request, res: Response) => {
@@ -105,7 +105,7 @@ export const updatePassword = async (req: Request, res: Response) => {
   if (!user) {
     return res.status(500).json({ error: 'Failed to update password' })
   }
-  return res.status(200).json({ success: true, message: 'Password updated!' })
+  return res.status(200).json({ message: 'Password updated!' })
 }
 
 export const loginWithToken = async (req: Request, res: Response) => {
