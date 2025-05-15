@@ -48,6 +48,5 @@ Local setup guide for the SmartLandlord backend.
     ```bash
     npm run test tests/auth.test.ts
     ```
-
 This uses `.env.testing` for test configurations.
 ---
