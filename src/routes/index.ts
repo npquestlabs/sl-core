@@ -4,7 +4,6 @@ import userRoutes from './user.routes'
 import complexRoutes from './complex.routes'
 import unitRoutes from './unit.routes'
 import landlordRoutes from './landlord.routes'
-import propertyRoutes from './property.routes'
 
 const router = express.Router()
 
@@ -17,6 +16,5 @@ router.use('/users', userRoutes)
 router.use('/complexes', complexRoutes)
 router.use('/units', unitRoutes)
 router.use('/landlords', landlordRoutes)
-router.use('/properties', propertyRoutes)
 
 export default router
