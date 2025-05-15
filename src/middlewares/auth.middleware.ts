@@ -64,7 +64,7 @@ export function isVerified(req: Request, res: Response, next: NextFunction) {
   const permitted = user.isVerified || config.environment === 'test' || config.environment === 'development'
 
   if (!permitted) {
-    return res.status(403).json({ error: 'User not verified' })
+    return res.status(403).json({ error: 'Email not verified' })
   }
 
   next()
