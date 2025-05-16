@@ -101,7 +101,7 @@ export const listMaintenanceRequests = async (filter: ListRequestsFilter) => {
     // Regular user - only their own requests
     where.OR = [
       { tenant: { userId } },
-      { unit: { complex: { landlord: { userId } } }
+      { unit: { complex: { landlord: { userId } } }}
     ];
   }
 
