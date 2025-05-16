@@ -8,6 +8,7 @@ import {
 } from '../schemas/maintenance.schema';
 import { MaintenanceStatus, InvoiceStatus } from '../../generated/prisma';
 
+// Type for createMaintenanceRequest input
 type CreateRequestInput = {
   unitId: string;
   tenantId?: string;
@@ -16,6 +17,7 @@ type CreateRequestInput = {
   scheduledFor?: Date;
 };
 
+// Type for listMaintenanceRequests filter
 type ListRequestsFilter = {
   userId: string;
   landlordId?: string;
@@ -49,7 +51,7 @@ export const createMaintenanceRequest = async (input: CreateRequestInput) => {
   const request = await prisma.maintenanceRequest.create({
     data: {
       unitId,
-      tenantId: tenantId || null, // Allow null for landlord-created requests
+      tenantId: tenantId || null,
       description,
       photoUrl: photoUrl || null,
       scheduledFor: scheduledFor || null,
@@ -96,7 +98,7 @@ export const listMaintenanceRequests = async (filter: ListRequestsFilter) => {
     // Vendor can only see requests assigned to them
     where.vendorId = vendorId;
   } else {
-    // Regular user - only their own requests (though unlikely for maintenance requests)
+    // Regular user - only their own requests
     where.OR = [
       { tenant: { userId } },
       { unit: { complex: { landlord: { userId } } }
@@ -128,7 +130,7 @@ export const updateMaintenanceRequest = async (
     where: { id: requestId },
     include: {
       tenant: { include: { user: true } },
-      unit: { include: { complex: { include: { landlord: { include: { user: true } } } } }
+      unit: { include: { complex: { include: { landlord: { include: { user: true } } } } } }
     }
   });
 
@@ -136,9 +138,7 @@ export const updateMaintenanceRequest = async (
     throw new AppError('Maintenance request not found', 404);
   }
 
-  // Check permissions:
-  // - Tenant can only update their own requests
-  // - Landlord can update requests for their properties
+  // Check permissions
   const isTenant = request.tenant?.userId === userId;
   const isLandlord = request.unit.complex.landlord.userId === userId;
 
@@ -191,7 +191,7 @@ export const submitVendorResponse = async (
       vendorResponse: input.vendorResponse,
       scheduledFor: input.scheduledFor,
       cost: input.cost,
-      costCurrency: 'GHS', // Default currency as per schema
+      costCurrency: 'GHS',
       status: 'SCHEDULED'
     },
     include: {
