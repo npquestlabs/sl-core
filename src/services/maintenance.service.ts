@@ -1,166 +1,127 @@
+import { z } from 'zod';
 import { prisma } from '../configs/prisma';
+import { PaginationSchema } from '../schemas/extras.schema';
+import { CompleteMaintenanceInput, CreateMaintenanceRequestInput, UpdateMaintenanceRequestInput, VendorResponseInput } from '../schemas/maintenance.schema';
+import { LocalUser } from '../types';
 import { AppError } from '../util/error';
-import { 
-  CreateMaintenanceRequestSchema,
-  UpdateMaintenanceRequestSchema,
-  VendorResponseSchema,
-  CompleteMaintenanceSchema
-} from '../schemas/maintenance.schema';
-import { MaintenanceStatus, InvoiceStatus } from '../../generated/prisma';
+import { Prisma } from '../../generated/prisma';
 
-// Type for createMaintenanceRequest input
-type CreateRequestInput = {
-  unitId: string;
-  tenantId?: string;
-  description: string;
-  photoUrl?: string;
-  scheduledFor?: Date;
-};
-
-// Type for listMaintenanceRequests filter
-type ListRequestsFilter = {
-  userId: string;
-  landlordId?: string;
-  tenantId?: string;
-  vendorId?: string;
-  status?: string;
-  unitId?: string;
-};
-
-export const createMaintenanceRequest = async (input: CreateRequestInput) => {
-  const { unitId, tenantId, description, photoUrl, scheduledFor } = input;
-
-  // Verify unit exists
-  const unit = await prisma.unit.findUnique({
-    where: { id: unitId },
-    include: { complex: true }
-  });
-  
-  if (!unit) {
-    throw new AppError('Unit not found', 404);
-  }
-
-  // If tenantId is provided, verify it exists
-  if (tenantId) {
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) {
-      throw new AppError('Tenant not found', 404);
-    }
-  }
-
+export const createMaintenanceRequest = async (creator: LocalUser, unitId: string, data: CreateMaintenanceRequestInput) => {
   const request = await prisma.maintenanceRequest.create({
     data: {
-      unitId,
-      tenantId: tenantId || null,
-      description,
-      photoUrl: photoUrl || null,
-      scheduledFor: scheduledFor || null,
-      status: 'PENDING'
+      creatorId: creator.id,
+      ...data,
+      unitId
     },
-    include: {
-      unit: true,
-      tenant: { include: { user: true } },
-      vendor: { include: { user: true } }
-    }
   });
 
   return request;
 };
 
-export const listMaintenanceRequests = async (filter: ListRequestsFilter) => {
-  const { userId, landlordId, tenantId, vendorId, status, unitId } = filter;
+export const listMaintenanceRequestsOfLandlord = async (landlordId: string, pagination: z.infer<typeof PaginationSchema>) => {
+  const { limit, page, order } = pagination;
 
-  // Base where clause
-  const where: any = { deletedAt: null };
-
-  // Add status filter if provided
-  if (status) {
-    where.status = status;
-  }
-
-  // Add unit filter if provided
-  if (unitId) {
-    where.unitId = unitId;
-  }
-
-  // Filter based on user role
-  if (landlordId) {
-    // Landlord can see requests for all their units
-    const complexes = await prisma.complex.findMany({
-      where: { landlordId },
-      select: { id: true }
-    });
-    where.unitId = { in: complexes.map(c => c.id) };
-  } else if (tenantId) {
-    // Tenant can only see their own requests
-    where.tenantId = tenantId;
-  } else if (vendorId) {
-    // Vendor can only see requests assigned to them
-    where.vendorId = vendorId;
-  } else {
-    // Regular user - only their own requests
-    where.OR = [
-      { tenant: { userId } },
-      { unit: { complex: { landlord: { userId } } }}
-    ];
-  }
-
-  const requests = await prisma.maintenanceRequest.findMany({
-    where,
+  const query_args: Prisma.MaintenanceRequestFindManyArgs = {
+    where: {
+      deletedAt: null,
+      unit: {
+        complex: {
+          landlordId
+        }
+      }
+    },
     include: {
       unit: { include: { complex: true } },
-      tenant: { include: { user: true } },
       vendor: { include: { user: true } }
     },
     orderBy: {
-      createdAt: 'desc'
-    }
-  });
+      ...(order || {createdAt: 'desc'})
+    },
+    take: limit,
+    skip: (page - 1) * limit,
 
-  return requests;
+  };
+
+  const result = await prisma.maintenanceRequest.findMany(query_args);
+  const total = await prisma.maintenanceRequest.count({where: query_args.where});
+
+  if (!result) {
+    return null;
+  }
+
+  return { data: result, meta: { page, limit, total }};
+};
+
+export const listMaintenanceRequestsOfUnit = async (unitId: string, pagination: z.infer<typeof PaginationSchema>) => {
+  const { limit, page, order } = pagination;
+
+  const query_args: Prisma.MaintenanceRequestFindManyArgs = {
+    where: {
+      deletedAt: null,
+      unitId
+    },
+    include: {
+      unit: { include: { complex: true } },
+      vendor: { include: { user: true } }
+    },
+    orderBy: {
+      ...(order || {createdAt: 'desc'})
+    },
+    take: limit,
+    skip: (page - 1) * limit,
+
+  };
+
+  const result = await prisma.maintenanceRequest.findMany(query_args);
+  const total = await prisma.maintenanceRequest.count({where: query_args.where});
+
+  if (!result) {
+    return null;
+  }
+
+  return { data: result, meta: { page, limit, total }};
+};
+
+export const listMaintenanceRequestsOfComplex = async (complexId: string, pagination: z.infer<typeof PaginationSchema>) => {
+  const { limit, page, order } = pagination;
+
+  const query_args: Prisma.MaintenanceRequestFindManyArgs = {
+    where: {
+      deletedAt: null,
+      unit: {
+        complexId
+      }
+    },
+    include: {
+      unit: { include: { complex: true } },
+      vendor: { include: { user: true } }
+    },
+    orderBy: {
+      ...(order || {createdAt: 'desc'})
+    },
+    take: limit,
+    skip: (page - 1) * limit,
+
+  };
+
+  const result = await prisma.maintenanceRequest.findMany(query_args);
+  const total = await prisma.maintenanceRequest.count({where: query_args.where});
+
+  if (!result) {
+    return null;
+  }
+
+  return { data: result, meta: { page, limit, total }};
 };
 
 export const updateMaintenanceRequest = async (
   requestId: string,
-  userId: string,
-  input: UpdateMaintenanceRequestSchema
+  input: UpdateMaintenanceRequestInput
 ) => {
-  // Verify request exists and user has permission
-  const request = await prisma.maintenanceRequest.findUnique({
-    where: { id: requestId },
-    include: {
-      tenant: { include: { user: true } },
-      unit: { include: { complex: { include: { landlord: { include: { user: true } } } } } }
-    }
-  });
-
-  if (!request) {
-    throw new AppError('Maintenance request not found', 404);
-  }
-
-  // Check permissions
-  const isTenant = request.tenant?.userId === userId;
-  const isLandlord = request.unit.complex.landlord.userId === userId;
-
-  if (!isTenant && !isLandlord) {
-    throw new AppError('Unauthorized to update this request', 403);
-  }
-
   const updatedRequest = await prisma.maintenanceRequest.update({
     where: { id: requestId },
     data: {
-      description: input.description,
-      photoUrl: input.photoUrl,
-      status: input.status,
-      // Only landlord can assign vendor
-      ...(isLandlord && input.vendorId ? { vendorId: input.vendorId } : {}),
-      ...(input.scheduledFor ? { scheduledFor: input.scheduledFor } : {}),
-      ...(input.completedAt ? { completedAt: input.completedAt } : {})
-    },
-    include: {
-      unit: true,
-      tenant: { include: { user: true } },
-      vendor: { include: { user: true } }
+      ...input
     }
   });
 
@@ -170,9 +131,8 @@ export const updateMaintenanceRequest = async (
 export const submitVendorResponse = async (
   requestId: string,
   vendorId: string,
-  input: VendorResponseSchema
+  input: VendorResponseInput
 ) => {
-  // Verify request exists and is assigned to this vendor
   const request = await prisma.maintenanceRequest.findUnique({
     where: { id: requestId }
   });
@@ -196,7 +156,6 @@ export const submitVendorResponse = async (
     },
     include: {
       unit: true,
-      tenant: { include: { user: true } },
       vendor: { include: { user: true } }
     }
   });
@@ -207,9 +166,8 @@ export const submitVendorResponse = async (
 export const completeMaintenanceRequest = async (
   requestId: string,
   vendorId: string,
-  input: CompleteMaintenanceSchema
+  input: CompleteMaintenanceInput
 ) => {
-  // Verify request exists and is assigned to this vendor
   const request = await prisma.maintenanceRequest.findUnique({
     where: { id: requestId }
   });
@@ -227,13 +185,11 @@ export const completeMaintenanceRequest = async (
     data: {
       completedAt: input.completedAt,
       cost: input.cost,
-      receiptUrl: input.receiptUrl || null,
       status: 'COMPLETED',
       paymentStatus: input.receiptUrl ? 'PAID' : 'PENDING'
     },
     include: {
       unit: true,
-      tenant: { include: { user: true } },
       vendor: { include: { user: true } }
     }
   });

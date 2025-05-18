@@ -1,117 +1,221 @@
-import { Request, Response } from 'express';
-import { prisma } from '../configs/prisma';
-import { AppError } from '../util/error';
-import { 
-  CreateMaintenanceRequestSchema, 
+import { Request, Response } from 'express'
+import {
   UpdateMaintenanceRequestSchema,
   VendorResponseSchema,
-  CompleteMaintenanceSchema
-} from '../schemas/maintenance.schema';
-import {
-  createMaintenanceRequest,
-  listMaintenanceRequests,
-  updateMaintenanceRequest,
-  submitVendorResponse,
-  completeMaintenanceRequest
-} from '../services/maintenance.service';
+  CompleteMaintenanceSchema,
+} from '../schemas/maintenance.schema'
+import * as maintenanceRequestsService from '../services/maintenance.service'
+import * as unitService from '../services/unit.service'
+import * as complexService from '../services/complex.service'
+import { z } from 'zod'
+import { PaginationSchema } from '../schemas/extras.schema'
+import { LeaseStatus, Prisma } from '../../generated/prisma'
 
-export const createMaintenanceRequestController = async (req: Request, res: Response) => {
-  const user = req.user;
+export const createMaintenanceRequest = async (req: Request, res: Response) => {
+  const user = req.user
   if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  // Currently allowing landlords to create requests (as per task document)
   if (!user.landlord && !user.tenant) {
-    throw new AppError('User is not authorized to create maintenance requests', 403);
+    return res.status(403).json({ error: 'Permission denied' })
   }
 
-  const input = CreateMaintenanceRequestSchema.parse(req.body);
-  
-  // If tenant is creating, ensure they're creating for their own unit
-  const tenantId = user.tenant?.id;
-  const request = await createMaintenanceRequest({
-    ...input,
-    tenantId: tenantId || input.tenantId // Use logged-in tenant if available
-  });
+  const { unitId } = req.params
+
+  if (!unitId) {
+    return res.status(400).json({ error: 'Invalid params' })
+  }
+
+  const request = await maintenanceRequestsService.createMaintenanceRequest(
+    user,
+    unitId,
+    req.body,
+  )
 
   return res.status(201).json({
     success: true,
     data: request,
-  });
-};
+  })
+}
 
-export const listMaintenanceRequestsController = async (req: Request, res: Response) => {
-  const user = req.user;
+export const getMaintenanceRequests = async (req: Request, res: Response) => {
+  const user = req.user
   if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  // Get query params for filtering
-  const { status, unitId } = req.query;
+  if (!user.landlord) {
+    return res.status(403).json({ error: 'Permission denied' })
+  }
 
-  const requests = await listMaintenanceRequests({
-    userId: user.id,
-    landlordId: user.landlord?.id,
-    tenantId: user.tenant?.id,
-    vendorId: user.vendor?.id,
-    status: status as string | undefined,
-    unitId: unitId as string | undefined
-  });
+  const pagination_query = req.query as unknown as z.infer<
+    typeof PaginationSchema
+  >
 
-  return res.status(200).json({
-    success: true,
-    data: requests,
-  });
-};
+  const result =
+    await maintenanceRequestsService.listMaintenanceRequestsOfLandlord(
+      user.landlord.id,
+      pagination_query,
+    )
 
-export const updateMaintenanceRequestController = async (req: Request, res: Response) => {
-  const user = req.user;
+  return res.status(200).json(result)
+}
+
+export const getMaintenanceRequestsOfUnit = async (
+  req: Request,
+  res: Response,
+) => {
+  const user = req.user
   if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  const requestId = req.params.id;
-  const input = UpdateMaintenanceRequestSchema.parse(req.body);
+  const { unitId } = req.params
 
-  const updatedRequest = await updateMaintenanceRequest(requestId, user.id, input);
+  if (!unitId) {
+    return res.status(400).json({ error: 'Invalid params' })
+  }
 
-  return res.status(200).json({
-    success: true,
-    data: updatedRequest,
-  });
-};
+  const accessOrConditions: Prisma.UnitWhereInput[] = []
 
-export const submitVendorResponseController = async (req: Request, res: Response) => {
-  const user = req.user;
+  if (user.landlord) {
+    accessOrConditions.push({
+      complex: {
+        landlordId: user.landlord.id,
+        deletedAt: null,
+      },
+    })
+  }
+
+  if (user.tenant) {
+    accessOrConditions.push({
+      leases: {
+        some: {
+          tenantId: user.tenant.id,
+          status: LeaseStatus.ACTIVE,
+          deletedAt: null,
+        },
+      },
+    })
+  }
+
+  const whereClause: Prisma.UnitWhereUniqueInput = {
+    id: unitId,
+    deletedAt: null,
+    OR: accessOrConditions,
+  }
+
+  const unit = unitService.getUnit(whereClause)
+
+  if (!unit) {
+    return res.status(404).json({ error: 'Not found' })
+  }
+
+  const pagination_query = req.query as unknown as z.infer<
+    typeof PaginationSchema
+  >
+
+  const result = await maintenanceRequestsService.listMaintenanceRequestsOfUnit(
+    unitId,
+    pagination_query,
+  )
+
+  return res.status(200).json(result)
+}
+
+export const getMaintenanceRequestsOfComplex = async (
+  req: Request,
+  res: Response,
+) => {
+  const user = req.user
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  if (!user.landlord) {
+    return res.status(403).json({ error: 'Permission denied' })
+  }
+
+  const { complexId } = req.params
+
+  if (!complexId) {
+    return res.status(400).json({ error: 'Invalid params' })
+  }
+
+  const complex = complexService.getComplex({
+    id: complexId,
+    landlordId: user.landlord.id,
+  })
+
+  if (!complex) {
+    return res.status(404).json({ error: 'Not found' })
+  }
+
+  const pagination_query = req.query as unknown as z.infer<
+    typeof PaginationSchema
+  >
+
+  const result =
+    await maintenanceRequestsService.listMaintenanceRequestsOfComplex(
+      complexId,
+      pagination_query,
+    )
+
+  return res.status(200).json(result)
+}
+
+export const updateMaintenanceRequest = async (req: Request, res: Response) => {
+  const user = req.user
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  const requestId = req.params.id
+  const input = UpdateMaintenanceRequestSchema.parse(req.body)
+
+  const updatedRequest =
+    await maintenanceRequestsService.updateMaintenanceRequest(requestId, input)
+
+  return res.status(200).json(updatedRequest)
+}
+
+export const submitVendorResponse = async (req: Request, res: Response) => {
+  const user = req.user
   if (!user || !user.vendor) {
-    return res.status(401).json({ error: 'Unauthorized - Vendor access only' });
+    return res.status(401).json({ error: 'Unauthorized - Vendor access only' })
   }
 
-  const requestId = req.params.id;
-  const input = VendorResponseSchema.parse(req.body);
+  const requestId = req.params.id
+  const input = VendorResponseSchema.parse(req.body)
 
-  const updatedRequest = await submitVendorResponse(requestId, user.vendor.id, input);
+  const updatedRequest = await maintenanceRequestsService.submitVendorResponse(
+    requestId,
+    user.vendor.id,
+    input,
+  )
 
-  return res.status(200).json({
-    success: true,
-    data: updatedRequest,
-  });
-};
+  return res.status(200).json(updatedRequest)
+}
 
-export const completeMaintenanceRequestController = async (req: Request, res: Response) => {
-  const user = req.user;
+export const completeMaintenanceRequest = async (
+  req: Request,
+  res: Response,
+) => {
+  const user = req.user
   if (!user || !user.vendor) {
-    return res.status(401).json({ error: 'Unauthorized - Vendor access only' });
+    return res.status(401).json({ error: 'Unauthorized - Vendor access only' })
   }
 
-  const requestId = req.params.id;
-  const input = CompleteMaintenanceSchema.parse(req.body);
+  const requestId = req.params.id
+  const input = CompleteMaintenanceSchema.parse(req.body)
 
-  const completedRequest = await completeMaintenanceRequest(requestId, user.vendor.id, input);
+  const completedRequest =
+    await maintenanceRequestsService.completeMaintenanceRequest(
+      requestId,
+      user.vendor.id,
+      input,
+    )
 
-  return res.status(200).json({
-    success: true,
-    data: completedRequest,
-  });
-};
+  return res.status(200).json(completedRequest)
+}
