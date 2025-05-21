@@ -33,10 +33,7 @@ export const createMaintenanceRequest = async (req: Request, res: Response) => {
     req.body,
   )
 
-  return res.status(201).json({
-    success: true,
-    data: request,
-  })
+  return res.status(201).json(request)
 }
 
 export const getMaintenanceRequests = async (req: Request, res: Response) => {

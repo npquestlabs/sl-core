@@ -5,31 +5,23 @@ export const LoginSchema = z.object({
   password: z.string().min(1, 'Password must be at least 3 characters long'), // only for login
 })
 
+export const RegisterTenantSchema = z.object({})
+
+export const RegisterLandlordSchema = z.object({})
+
+export const RegisterArtisanSchema = z.object({
+  specialty: z.string().min(1, 'Specialty is required'),
+})
+
 export const RegisterUserSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
-})
-
-export const RegisterTenantSchema = z.object({
-  ...RegisterUserSchema.shape,
-  tenantData: z.object({}).optional(),
-})
-
-export const RegisterLandlordSchema = z.object({
-  ...RegisterUserSchema.shape,
-  landlordData: z.object({}).optional(),
-})
-
-export const RegisterArtisanSchema = z.object({
-  ...RegisterUserSchema.shape,
-  artisanData: z
-    .object({
-      specialty: z.string().min(1, 'Specialty is required'),
-    })
-    .optional(),
+  landlord: RegisterLandlordSchema.optional(),
+  tenant: RegisterTenantSchema.optional(),
+  vendor: RegisterArtisanSchema.optional(),
 })
 
 export const UpdateTenantSchema = z

@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import jwt from 'jsonwebtoken'
-import config from '../configs/environment'
-import { LocalUser } from '../types'
+import { verifyToken } from '../util/token'
 
 export function authenticate(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization
@@ -13,8 +11,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   const token = authHeader.split(' ')[1]
 
   try {
-    const decoded = jwt.verify(token, config.jwtSecret) as LocalUser
-    req.user = decoded
+    req.user = verifyToken(token)
     next()
   } catch (err) {
     console.error(err)
@@ -52,20 +49,4 @@ export function expect(allowed: ('Tenant' | 'Landlord' | 'Vendor')[]) {
 
     next()
   }
-}
-
-export function isVerified(req: Request, res: Response, next: NextFunction) {
-  const user = req.user
-
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
-  const permitted = user.isVerified || config.environment === 'test' || config.environment === 'development'
-
-  if (!permitted) {
-    return res.status(403).json({ error: 'Email not verified' })
-  }
-
-  next()
 }

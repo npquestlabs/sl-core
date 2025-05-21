@@ -1,8 +1,50 @@
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
-import { AppError } from '../util/error'
+import { AppError, ServerError } from '../util/error'
 import { z } from 'zod'
-import { UpdateUserSchema } from '../schemas/user.schema'
+import { RegisterUserSchema, UpdateUserSchema } from '../schemas/user.schema'
+import { Prisma } from '../../generated/prisma'
+import * as authService from './auth.service'
+
+export const registerUser = async (data: z.infer<typeof RegisterUserSchema>) => {
+  const { password, landlord, tenant, vendor, ...userData } = data
+
+  const passwordHash = await bcrypt.hash(password, 10)
+
+  const createUserInput = {
+    ...userData,
+    passwordHash,
+    isVerified: true,
+  }
+
+  const createdLandlordUser = await prisma.user.create({
+    data: {
+      ...createUserInput,
+
+      landlord: {
+        create: {
+          ...landlord,
+        }
+      },
+      tenant: {
+        create: {
+          ...tenant
+        }
+      },
+      vendor: {
+        create: {
+          ...vendor
+        }
+      }
+    },
+  })
+
+  if (!createdLandlordUser) {
+    throw new ServerError('Unable to create landlord user')
+  }
+
+  return await authService.loginUser(userData.email, password)
+}
 
 export const isUnusedEmail = async (email: string) => {
   const user = await prisma.user.findUnique({
@@ -75,12 +117,14 @@ export const getUserById = async (id: string) => {
   return user
 }
 
-export const getUserByEmail = async (email: string) => {
+export const getUserByEmail = async (email: string, omit: Prisma.UserOmit = {}, include: Prisma.UserInclude = {}) => {
   const user = await prisma.user.findUnique({
     where: { email },
     omit: {
+      ...omit,
       passwordHash: true,
     },
+    include,
   })
 
   if (!user) {
@@ -127,27 +171,4 @@ export const updateUserPassword = async (userId: string, password: string) => {
   })
 
   return updatedUser ?? null
-}
-
-export const verifyUserEmail = async (email: string) => {
-  const user = await prisma.user.update({
-    where: { email },
-    data: {
-      isVerified: true,
-    },
-    omit: {
-      passwordHash: true,
-      idType: true,
-      idNumber: true,
-      idDocumentUrl: true,
-      phone: true,
-    },
-    include: {
-      landlord: true,
-      tenant: true,
-      vendor: true,
-    },
-  })
-
-  return user ?? null
 }
