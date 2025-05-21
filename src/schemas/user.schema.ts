@@ -22,6 +22,12 @@ export const RegisterUserSchema = z.object({
   landlord: RegisterLandlordSchema.optional(),
   tenant: RegisterTenantSchema.optional(),
   vendor: RegisterArtisanSchema.optional(),
+}).refine((data) => {
+  const { landlord, tenant, vendor } = data
+  const roles = [landlord, tenant, vendor].filter(Boolean)
+  return roles.length === 1
+}, {
+  message: 'Exactly one role is required',
 })
 
 export const UpdateTenantSchema = z

@@ -15,6 +15,12 @@ export const registerUser = async (req: Request, res: Response) => {
       firstName: String(req.body.firstName),
       lastName: String(req.body.lastName),
     }
+    const existingUser = await userService.getUserByEmail(data.email);
+
+    if (existingUser) {
+      return res.status(400).json({ error: "Email is already used" })
+    }
+
     const token = generateToken(req.body, { expiresIn: '5m' })
     await sendVerificationEmail(data, token)
 
@@ -39,9 +45,9 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const verifyUser = async (req: Request, res: Response) => {
   try {
-    const result = await userService.registerUser(req.body)
+    const result = await userService.createUser(req.body)
     if (!result) {
-      return res.status(500).json({ error: 'Failed to add landlord' })
+      return res.status(500).json({ error: 'Failed to add user' })
     }
     
     return res.status(200).json(result)
@@ -49,7 +55,7 @@ export const verifyUser = async (req: Request, res: Response) => {
     if (error instanceof AppError) {
       return res.status(error.statusCode).json({ error: error.message })
     }
-    throw error
+    return res.status(500).json({ error: 'Failed to add user' })
   }
 }
 
@@ -93,10 +99,6 @@ export const sendVerificationLink = async (req: Request, res: Response) => {
   const user = req.user
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized' })
-  }
-
-  if (user.isVerified) {
-    return res.status(400).json({ error: 'User already verified' })
   }
 
   const { email } = req.body

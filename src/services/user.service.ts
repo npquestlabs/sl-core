@@ -6,7 +6,7 @@ import { RegisterUserSchema, UpdateUserSchema } from '../schemas/user.schema'
 import { Prisma } from '../../generated/prisma'
 import * as authService from './auth.service'
 
-export const registerUser = async (data: z.infer<typeof RegisterUserSchema>) => {
+export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
   const { password, landlord, tenant, vendor, ...userData } = data
 
   const passwordHash = await bcrypt.hash(password, 10)
@@ -14,7 +14,6 @@ export const registerUser = async (data: z.infer<typeof RegisterUserSchema>) => 
   const createUserInput = {
     ...userData,
     passwordHash,
-    isVerified: true,
   }
 
   const createdLandlordUser = await prisma.user.create({
@@ -22,20 +21,26 @@ export const registerUser = async (data: z.infer<typeof RegisterUserSchema>) => 
       ...createUserInput,
 
       landlord: {
-        create: {
-          ...landlord,
-        }
+        ...(landlord && {
+          create: {
+            ...landlord,
+          },
+        }),
       },
       tenant: {
-        create: {
-          ...tenant
-        }
+        ...(tenant && {
+          create: {
+            ...tenant,
+          },
+        }),
       },
       vendor: {
-        create: {
-          ...vendor
-        }
-      }
+        ...(vendor && {
+          create: {
+            ...vendor,
+          },
+        }),
+      },
     },
   })
 
@@ -117,7 +122,11 @@ export const getUserById = async (id: string) => {
   return user
 }
 
-export const getUserByEmail = async (email: string, omit: Prisma.UserOmit = {}, include: Prisma.UserInclude = {}) => {
+export const getUserByEmail = async (
+  email: string,
+  omit: Prisma.UserOmit = {},
+  include: Prisma.UserInclude = {},
+) => {
   const user = await prisma.user.findUnique({
     where: { email },
     omit: {
@@ -127,11 +136,7 @@ export const getUserByEmail = async (email: string, omit: Prisma.UserOmit = {}, 
     include,
   })
 
-  if (!user) {
-    throw new AppError('User not found', 404)
-  }
-
-  return user
+  return user ?? null
 }
 
 export const updateUserPassword = async (userId: string, password: string) => {
