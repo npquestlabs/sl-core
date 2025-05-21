@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, isVerified } from '../middlewares/auth.middleware'; 
+import { authenticate } from '../middlewares/auth.middleware'; 
 import { validateQuery } from '../middlewares/validator.middleware';
 import { GetPaymentsQuerySchema } from '../schemas/payment.schema';
 import * as paymentController from '../controllers/payment.controller';
@@ -7,7 +7,6 @@ import * as paymentController from '../controllers/payment.controller';
 const router = Router();
 
 router.use(authenticate)
-router.use(isVerified)
 
 router.get('/complexes/:complexId', validateQuery(GetPaymentsQuerySchema), paymentController.getComplexPayments);
 router.get('/units/:unitId', validateQuery(GetPaymentsQuerySchema), paymentController.getUnitPayments);

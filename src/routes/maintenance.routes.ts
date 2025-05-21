@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, isVerified } from '../middlewares/auth.middleware';
+import { authenticate } from '../middlewares/auth.middleware';
 import * as maintenanceRequestsController from '../controllers/maintenance.controller';
 import { validateBody, validateQuery } from '../middlewares/validator.middleware';
 import { PaginationSchema } from '../schemas/extras.schema';
@@ -7,7 +7,6 @@ import { CreateMaintenanceRequestSchema, UpdateMaintenanceRequestSchema } from '
 
 const router = Router();
 router.use(authenticate)
-router.use(isVerified);
 
 // Maintenance Request Routes
 router.post('/', validateBody(CreateMaintenanceRequestSchema), maintenanceRequestsController.createMaintenanceRequest);
