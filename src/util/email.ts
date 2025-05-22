@@ -115,7 +115,7 @@ export const sendVerificationEmail = async (user: { email: string; firstName: st
 
     Thank you for signing up!
 
-    Please verify your email address by clicking on the link below:
+    To activate your account, please verify your email address by clicking on the link below:
 
     ${verificationLink}
 
@@ -127,7 +127,7 @@ export const sendVerificationEmail = async (user: { email: string; firstName: st
   const htmlContent = `
     <p>Hi ${user.firstName} ${user.lastName},</p>
     <p>Thank you for signing up!</p>
-    <p>Please verify your email address by clicking on the button below:</p>
+    <p>To activate your account, please verify your email address by clicking on the button below:</p>
     <p style="text-align: center;"><a href="${verificationLink}" class="button">Verify Email Address</a></p>
     <p>If the button above doesn't work, you can also copy and paste this link into your web browser:</p>
     <p><a href="${verificationLink}">${verificationLink}</a></p>

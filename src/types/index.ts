@@ -5,7 +5,6 @@ export type LocalUser = {
   firstName: string
   lastName: string
   email: string
-  isVerified: boolean
   landlord: Landlord | null
   tenant: Tenant | null
   vendor: Vendor | null

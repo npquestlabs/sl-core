@@ -10,11 +10,11 @@ import {
   beforeEach, // Added
 } from '@jest/globals';
 import { faker } from '@faker-js/faker';
-import { generateAccessToken } from '../src/util/token';
-import { User, Landlord, Tenant, Vendor, Prisma } from '../generated/prisma'; // Using Prisma generated types
+import { generateToken } from '../src/util/token';
+import { User, Landlord, Tenant, Vendor, Prisma } from '../generated/prisma';
 import bcrypt from 'bcryptjs';
 
-// --- Global State for Suite-Run Isolation ---
+
 let runIdPrefix: string;
 
 // --- Global State for Intra-Suite Test Isolation (entities created *within* an 'it' block) ---
@@ -25,32 +25,31 @@ let testCreatedUserIds_intraTest: string[] = [];
 // --- Foundational Test Entities (created once per suite run, uniquely prefixed) ---
 let landlordUser: User;
 let landlordProfile: Landlord;
-let landlordToken: string;
+let landlordTokens: { access: string };
 
 let tenantUser: User;
 let tenantProfile: Tenant;
-let tenantToken: string;
+let tenantTokens: { access: string };
 
 let vendorUser: User;
 let vendorProfile: Vendor;
-let vendorToken: string;
+let vendorTokens: { access: string };
 
-// Helper to set up a user with a role, incorporating the runIdPrefix for foundational users
+
 const setupUserWithRole = async (
-  emailPrefix: string, // This will include runIdPrefix for foundational users
+  emailPrefix: string,
   phoneSuffix: string = '',
   role: 'landlord' | 'tenant' | 'vendor',
-  trackIntraTest: boolean = false // If true, IDs are added to intra-test cleanup arrays
-): Promise<{ user: User; profile: Landlord | Tenant | Vendor; token: string }> => {
+  trackIntraTest: boolean = false
+) => {
   const uniqueEmail = `${emailPrefix}_${faker.internet.email().toLowerCase()}`;
-  const password = 'password123'; // Consistent test password
+  const password = 'password123';
   const userData: Prisma.UserCreateInput = {
     email: uniqueEmail,
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
     phone: `${faker.phone.number()}${phoneSuffix}`,
     passwordHash: await bcrypt.hash(password, 10),
-    isVerified: true,
   };
 
   if (role === 'landlord') {
@@ -68,9 +67,6 @@ const setupUserWithRole = async (
 
   if (trackIntraTest) {
     testCreatedUserIds_intraTest.push(user.id);
-    // If profile IDs needed separate tracking and weren't cleaned by user deletion cascade/logic:
-    // if (role === 'landlord' && user.landlord) testCreatedLandlordIds_intraTest.push(user.landlord.id);
-    // etc. for tenant and vendor
   }
 
   const profile = user.landlord || user.tenant || user.vendor;
@@ -81,17 +77,17 @@ const setupUserWithRole = async (
 
   return {
     user,
-    profile: profile!,
-    token: generateAccessToken({
+    tokens: {
+      access: generateToken({
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      isVerified: user.isVerified,
       landlord: user.landlord,
       tenant: user.tenant,
       vendor: user.vendor,
     }),
+    }
   };
 };
 
@@ -101,18 +97,18 @@ beforeAll(async () => {
 
   const landlordData = await setupUserWithRole(`${runIdPrefix}_mainlandlord`, '_L_U', 'landlord');
   landlordUser = landlordData.user;
-  landlordProfile = landlordData.profile as Landlord;
-  landlordToken = landlordData.token;
+  landlordProfile = landlordData.user.landlord as Landlord;
+  landlordTokens = landlordData.tokens;
 
   const tenantData = await setupUserWithRole(`${runIdPrefix}_maintenant`, '_T_U', 'tenant');
   tenantUser = tenantData.user;
-  tenantProfile = tenantData.profile as Tenant;
-  tenantToken = tenantData.token;
+  tenantProfile = tenantData.user.tenant as Tenant;
+  tenantTokens = tenantData.tokens;
 
   const vendorData = await setupUserWithRole(`${runIdPrefix}_mainvendor`, '_V_U', 'vendor');
   vendorUser = vendorData.user;
-  vendorProfile = vendorData.profile as Vendor;
-  vendorToken = vendorData.token;
+  vendorProfile = vendorData.user.vendor as Vendor;
+  vendorTokens = vendorData.tokens;
 
   console.log(`User Test Run ID Prefix: ${runIdPrefix}`);
   console.log(`Main Landlord: ${landlordUser.email} (ID: ${landlordUser.id}, ProfileID: ${landlordProfile.id})`);
@@ -170,7 +166,7 @@ describe('User Routes (/users)', () => {
     it('should get current landlord user details', async () => {
       const response = await request(app)
         .get('/users/me')
-        .set('Authorization', `Bearer ${landlordToken}`);
+        .set('Authorization', `Bearer ${landlordTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.id).toBe(landlordUser.id);
       expect(response.body.email).toBe(landlordUser.email);
@@ -181,7 +177,7 @@ describe('User Routes (/users)', () => {
     it('should get current tenant user details', async () => {
       const response = await request(app)
         .get('/users/me')
-        .set('Authorization', `Bearer ${tenantToken}`);
+        .set('Authorization', `Bearer ${tenantTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.id).toBe(tenantUser.id);
       expect(response.body.email).toBe(tenantUser.email);
@@ -192,7 +188,7 @@ describe('User Routes (/users)', () => {
     it('should get current vendor user details', async () => {
       const response = await request(app)
         .get('/users/me')
-        .set('Authorization', `Bearer ${vendorToken}`);
+        .set('Authorization', `Bearer ${vendorTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.id).toBe(vendorUser.id);
       expect(response.body.email).toBe(vendorUser.email);
@@ -217,7 +213,7 @@ describe('User Routes (/users)', () => {
       const updateData = generateUpdateData();
       const response = await request(app)
         .patch('/users/me')
-        .set('Authorization', `Bearer ${landlordToken}`)
+        .set('Authorization', `Bearer ${landlordTokens.access}`)
         .send(updateData);
 
       expect(response.status).toBe(200);
@@ -239,7 +235,7 @@ describe('User Routes (/users)', () => {
       const updateData = generateUpdateData();
       const response = await request(app)
         .patch('/users/me')
-        .set('Authorization', `Bearer ${tenantToken}`)
+        .set('Authorization', `Bearer ${tenantTokens.access}`)
         .send(updateData);
 
       expect(response.status).toBe(200);
@@ -258,7 +254,7 @@ describe('User Routes (/users)', () => {
       };
       const response = await request(app)
         .patch('/users/me')
-        .set('Authorization', `Bearer ${landlordToken}`)
+        .set('Authorization', `Bearer ${landlordTokens.access}`)
         .send(invalidUpdatePayload);
         
       // This expectation depends on your API's behavior:
@@ -283,7 +279,7 @@ describe('User Routes (/users)', () => {
     it('should return 400 if sending an empty payload or payload with no valid updatable fields', async () => {
         const response = await request(app)
             .patch('/users/me')
-            .set('Authorization', `Bearer ${landlordToken}`)
+            .set('Authorization', `Bearer ${landlordTokens.access}`)
             .send({}); // Empty payload
 
         expect(response.status).toBe(400); // Assuming this is the desired behavior for no actual changes

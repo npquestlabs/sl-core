@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { ZodSchema } from 'zod'
 import { AppError } from '../util/error'
+import { verifyToken } from '../util/token'
 
 /**
  * Middleware to validate request body using Zod schema
@@ -60,6 +61,40 @@ export const validateParams = (schema: ZodSchema) => {
     }
 
     req.params = result.data
+
+    next()
+  }
+}
+
+export const transformBody = (schema: ZodSchema) => {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const result = schema.safeParse(req.body)
+
+    if (!result.success) {
+      const firstError = result.error.errors[0]
+
+      throw new AppError(firstError.message, 400)
+    }
+
+    req.body = result.data
+
+    next()
+  }
+}
+
+export const transformTokenBody = (schema: ZodSchema) => {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const { token } = req.body
+    const data = verifyToken(token)
+    const result = schema.safeParse(data)
+
+    if (!result.success) {
+      const firstError = result.error.errors[0]
+
+      throw new AppError(firstError.message, 400)
+    }
+
+    req.body = result.data
 
     next()
   }
