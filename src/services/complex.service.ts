@@ -71,8 +71,6 @@ export async function getComplexesOfLandlord(
     deletedAt: null,
   }
 
-  console.log('landlordId', landlordId)
-
   if (filter) {
     whereClause.OR = [
       { name: { contains: filter, mode: 'insensitive' } },

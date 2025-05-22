@@ -5,6 +5,9 @@ import { sendPasswordResetEmail, sendVerificationEmail } from '../util/email'
 import { AppError } from '../util/error'
 import { generateToken } from '../util/token'
 import sanitizedConfig from '../configs/environment'
+import { RegisterUserSchema } from '../schemas/user.schema'
+import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 
 // Intentionally made the registerUser return 201 while the verifyUser return 200
 
@@ -18,10 +21,13 @@ export const registerUser = async (req: Request, res: Response) => {
     const existingUser = await userService.getUserByEmail(data.email);
 
     if (existingUser) {
-      return res.status(400).json({ error: "Email is already used" })
+      return res.status(400).json({ error: "Email already exists" })
     }
 
-    const token = generateToken(req.body, { expiresIn: '5m' })
+    const payload = req.body as z.infer<typeof RegisterUserSchema>
+    payload.password =  await bcrypt.hash(payload.password, 10)
+
+    const token = generateToken(payload, { expiresIn: '5m' })
     await sendVerificationEmail(data, token)
 
     const result = {
@@ -73,7 +79,12 @@ export const forgotPassword = async (req: Request, res: Response) => {
   }
   const token = generateToken({ email })
   await sendPasswordResetEmail(email, token)
-  return res.status(200).json({ message: 'Password reset url sent to email!' })
+  const result = { message: 'Password reset url sent to email!' }
+  if (sanitizedConfig.environment !== 'production') {
+    // @ts-expect-error dynamically adding emailToken field to result
+    result.emailToken = token
+  }
+  return res.status(200).json(result)
 }
 
 export const updatePassword = async (req: Request, res: Response) => {

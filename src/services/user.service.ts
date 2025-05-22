@@ -4,19 +4,20 @@ import { AppError, ServerError } from '../util/error'
 import { z } from 'zod'
 import { RegisterUserSchema, UpdateUserSchema } from '../schemas/user.schema'
 import { Prisma } from '../../generated/prisma'
-import * as authService from './auth.service'
+import { sanitizeUser } from '../util'
+import { generateToken } from '../util/token'
+import config from '../configs/environment'
+import jwt from 'jsonwebtoken'
 
 export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
   const { password, landlord, tenant, vendor, ...userData } = data
 
-  const passwordHash = await bcrypt.hash(password, 10)
-
   const createUserInput = {
     ...userData,
-    passwordHash,
+    passwordHash: password, // Already hashed
   }
 
-  const createdLandlordUser = await prisma.user.create({
+  const createdUser = await prisma.user.create({
     data: {
       ...createUserInput,
 
@@ -42,13 +43,31 @@ export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
         }),
       },
     },
+    omit: {
+      passwordHash: true,
+      idType: true,
+      idNumber: true,
+      idDocumentUrl: true,
+      phone: true,
+    },
+    include: {
+      landlord: true,
+      tenant: true,
+      vendor: true,
+    },
   })
 
-  if (!createdLandlordUser) {
-    throw new ServerError('Unable to create landlord user')
+  if (!createdUser) {
+    throw new ServerError('Unable to create user')
   }
 
-  return await authService.loginUser(userData.email, password)
+  const sanitizedUser = sanitizeUser(createdUser)
+
+  const options: jwt.SignOptions = { expiresIn: config.environment === 'production' ? '24h' : '24m' }
+
+  const accessToken = generateToken(sanitizedUser, options)
+
+  return { user: sanitizedUser, tokens: { access: accessToken } }
 }
 
 export const isUnusedEmail = async (email: string) => {

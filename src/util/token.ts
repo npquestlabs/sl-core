@@ -16,6 +16,6 @@ export function verifyToken<T>(token: string): T {
     // A validator middleware must be used to check if the type of the decoded token is correct
     return decoded as T
   } catch (error) {
-    throw new AppError('Invalid or expired token', 401)
+    throw new AppError('Invalid or expired token', 400)
   }
 }
