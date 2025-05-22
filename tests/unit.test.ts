@@ -10,7 +10,7 @@ import {
   beforeEach,
 } from '@jest/globals';
 import { faker } from '@faker-js/faker';
-import { generateAccessToken } from '../src/util/token';
+import { generateToken } from '../src/util/token';
 import {
   Landlord,
   User,
@@ -33,12 +33,12 @@ let testCreatedTenantIds_intraTest: string[] = []; // For tenant profiles create
 // --- Foundational Test Entities (created once per suite run, uniquely prefixed) ---
 let landlordUser: User;
 let landlord: Landlord;
-let landlordToken: string;
+let landlordTokens: { access: string };
 
 let tenantUser: User;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 let tenant: Tenant;
-let tenantToken: string;
+let tenantTokens: { access: string };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 let otherLandlordUser: User;
@@ -79,7 +79,6 @@ const setupUserWithRole = async (
     lastName: faker.person.lastName(),
     phone: `${faker.phone.number()}${phoneSuffix}`,
     passwordHash: await faker.internet.password(),
-    isVerified: true,
   };
 
   if (role === 'landlord') {
@@ -104,16 +103,17 @@ const setupUserWithRole = async (
   return {
     user,
     profile: role === 'landlord' ? user.landlord! : user.tenant!,
-    token: generateAccessToken({
+    tokens: {
+      access: generateToken({
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      isVerified: user.isVerified,
       landlord: user.landlord,
       tenant: user.tenant,
       vendor: null,
     }),
+    }
   };
 };
 
@@ -136,12 +136,12 @@ beforeAll(async () => {
   const landlordData = await setupUserWithRole(`${runIdPrefix}_mainlandlord`, '_L1_U', 'landlord');
   landlordUser = landlordData.user;
   landlord = landlordData.profile as Landlord;
-  landlordToken = landlordData.token;
+  landlordTokens = landlordData.tokens;
 
   const tenantData = await setupUserWithRole(`${runIdPrefix}_maintenant`, '_T1_U', 'tenant');
   tenantUser = tenantData.user;
   tenant = tenantData.profile as Tenant;
-  tenantToken = tenantData.token;
+  tenantTokens = tenantData.tokens;
 
   const otherLandlordData = await setupUserWithRole(`${runIdPrefix}_otherlandlord`, '_OL1_U', 'landlord');
   otherLandlordUser = otherLandlordData.user;
@@ -243,7 +243,7 @@ describe('Unit Routes', () => {
       const unitDataPayload = generateUnitData('_post_new');
       const response = await request(app)
         .post(`/complexes/${mainTestComplex.id}/units`)
-        .set('Authorization', `Bearer ${landlordToken}`)
+        .set('Authorization', `Bearer ${landlordTokens.access}`)
         .send(unitDataPayload);
 
       expect(response.status).toBe(201);
@@ -263,7 +263,7 @@ describe('Unit Routes', () => {
 
       const response = await request(app)
         .post(`/complexes/${otherComplex.id}/units`)
-        .set('Authorization', `Bearer ${landlordToken}`) // Main landlord's token
+        .set('Authorization', `Bearer ${landlordTokens.access}`) // Main landlord's token
         .send(generateUnitData('_post_other_complex'));
       expect(response.status).toBe(404);
     });
@@ -290,7 +290,7 @@ describe('Unit Routes', () => {
     it('should get units for a complex owned by the landlord', async () => {
       const response = await request(app)
         .get(`/complexes/${mainTestComplex.id}/units`)
-        .set('Authorization', `Bearer ${landlordToken}`);
+        .set('Authorization', `Bearer ${landlordTokens.access}`);
 
       expect(response.status).toBe(200);
       expect(response.body.data).toBeInstanceOf(Array);
@@ -306,7 +306,7 @@ describe('Unit Routes', () => {
 
       const response = await request(app)
         .get(`/complexes/${otherComplex.id}/units`)
-        .set('Authorization', `Bearer ${landlordToken}`);
+        .set('Authorization', `Bearer ${landlordTokens.access}`);
       expect(response.status).toBe(403); // Or 404 if your API treats it as not found for this user
     });
   });
@@ -325,7 +325,7 @@ describe('Unit Routes', () => {
     it('should get a specific unit if landlord owns the complex', async () => {
       const response = await request(app)
         .get(`/units/${testUnit.id}`)
-        .set('Authorization', `Bearer ${landlordToken}`);
+        .set('Authorization', `Bearer ${landlordTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.id).toBe(testUnit.id);
     });
@@ -334,7 +334,7 @@ describe('Unit Routes', () => {
       // testUnit is created by beforeEach but NOT assigned to the main tenantToken's user
       const response = await request(app)
         .get(`/units/${testUnit.id}`)
-        .set('Authorization', `Bearer ${tenantToken}`);
+        .set('Authorization', `Bearer ${tenantTokens.access}`);
       expect(response.status).toBe(404);
     });
   });
@@ -354,7 +354,7 @@ describe('Unit Routes', () => {
     it('should update a unit if landlord owns the complex', async () => {
       const response = await request(app)
         .patch(`/units/${unitToUpdate.id}`)
-        .set('Authorization', `Bearer ${landlordToken}`)
+        .set('Authorization', `Bearer ${landlordTokens.access}`)
         .send(updatePayload);
       expect(response.status).toBe(200);
       expect(response.body.label).toBe(updatePayload.label);
@@ -363,7 +363,7 @@ describe('Unit Routes', () => {
     it('should return 403 if tenant tries to update a unit', async () => {
       const response = await request(app)
         .patch(`/units/${unitToUpdate.id}`)
-        .set('Authorization', `Bearer ${tenantToken}`)
+        .set('Authorization', `Bearer ${tenantTokens.access}`)
         .send(updatePayload);
       expect(response.status).toBe(403);
     });
@@ -379,7 +379,7 @@ describe('Unit Routes', () => {
 
       const response = await request(app)
         .patch(`/units/${unitInOtherComplex.id}`)
-        .set('Authorization', `Bearer ${landlordToken}`) // Main landlord's token
+        .set('Authorization', `Bearer ${landlordTokens.access}`) // Main landlord's token
         .send(updatePayload);
       expect(response.status).toBe(404);
 
@@ -403,7 +403,7 @@ describe('Unit Routes', () => {
     it('should soft delete a unit if landlord owns the complex', async () => {
       const response = await request(app)
         .delete(`/units/${unitToDelete.id}`)
-        .set('Authorization', `Bearer ${landlordToken}`);
+        .set('Authorization', `Bearer ${landlordTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.deletedAt).not.toBeNull();
       // afterEach will hard-delete this soft-deleted unit.
@@ -420,7 +420,7 @@ describe('Unit Routes', () => {
 
       const response = await request(app)
         .delete(`/units/${unitInOtherComplex.id}`)
-        .set('Authorization', `Bearer ${landlordToken}`); // Main landlord's token
+        .set('Authorization', `Bearer ${landlordTokens.access}`); // Main landlord's token
       expect(response.status).toBe(404);
 
       // Manual cleanup if these were meant to be very short-lived for this test only
