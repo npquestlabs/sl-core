@@ -3,21 +3,17 @@ import { app } from '../src/configs/server';
 import { prisma } from '../src/configs/prisma';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { faker } from '@faker-js/faker';
-import { generateAccessToken } from '../src/util/token';
 import { Landlord, Complex, User } from '../generated/prisma';
+import { generateToken } from '../src/util/token';
 
-// --- Global State for Suite-Run Isolation ---
 let runIdPrefix: string;
 
-// --- Global State for Intra-Suite Test Isolation ---
 let testCreatedComplexIds: string[] = [];
-// Add more arrays if other entities are created *within* tests (e.g., testCreatedUnitIds)
 
-// --- Foundational Test Users (created once per suite run, uniquely prefixed) ---
 let landlordUser: User;
 let otherLandlordUser: User;
 let landlord: Landlord;
-let landlordToken: string;
+let landlordTokens: { access: string };
 let otherLandlord: Landlord;
 
 const generateComplexData = (nameSuffix: string = '') => ({
@@ -41,7 +37,6 @@ const setupLandlord = async (emailPrefix: string, phoneSuffix: string = '') => {
             lastName: faker.person.lastName(),
             phone: `${faker.phone.number()}${phoneSuffix}`,
             passwordHash: await faker.internet.password(),
-            isVerified: true,
             landlord: {
                 create: {},
             },
@@ -51,16 +46,17 @@ const setupLandlord = async (emailPrefix: string, phoneSuffix: string = '') => {
     return {
         user,
         landlord: user.landlord!,
-        token: generateAccessToken({
+        tokens: {
+            access: generateToken({
             id: user.id,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            isVerified: user.isVerified,
             landlord: user.landlord,
             tenant: null,
             vendor: null,
-        }),
+        })
+        },
     };
 };
 
@@ -81,7 +77,7 @@ beforeAll(async () => {
     const landlord1Details = await setupLandlord(runIdPrefix, '_L1');
     landlordUser = landlord1Details.user;
     landlord = landlord1Details.landlord;
-    landlordToken = landlord1Details.token;
+    landlordTokens = landlord1Details.tokens;
 
     const landlord2Details = await setupLandlord(runIdPrefix, '_L2');
     otherLandlordUser = landlord2Details.user;
@@ -146,7 +142,7 @@ describe('Complex Routes', () => {
             const complexData = generateComplexData('_post');
             const response = await request(app)
                 .post('/complexes')
-                .set('Authorization', `Bearer ${landlordToken}`)
+                .set('Authorization', `Bearer ${landlordTokens.access}`)
                 .send(complexData);
 
             expect(response.status).toBe(200);
@@ -171,7 +167,7 @@ describe('Complex Routes', () => {
             const complexData = generateComplexData();
             const response = await request(app)
                 .post('/complexes')
-                .set('Authorization', `Bearer ${landlordToken}`)
+                .set('Authorization', `Bearer ${landlordTokens.access}`)
                 .send({ ...complexData, name: '' });
             expect(response.status).toBe(400);
         });
@@ -183,7 +179,7 @@ describe('Complex Routes', () => {
             // `afterEach` from previous tests (if any) and `beforeEach` for this test ensure a clean slate for *tracked* items.
             const response = await request(app)
                 .get('/complexes')
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
 
             expect(response.status).toBe(200);
             expect(response.body.data).toBeInstanceOf(Array);
@@ -204,7 +200,7 @@ describe('Complex Routes', () => {
 
             const response = await request(app)
                 .get('/complexes')
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
 
             expect(response.status).toBe(200);
             expect(response.body.data).toBeInstanceOf(Array);
@@ -229,14 +225,14 @@ describe('Complex Routes', () => {
 
             const responsePage1 = await request(app)
                 .get('/complexes?page=1&limit=3')
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
             expect(responsePage1.status).toBe(200);
             expect(responsePage1.body.data.length).toBe(3);
             expect(responsePage1.body.meta.total).toBe(numComplexesToCreate);
 
             const responsePage2 = await request(app)
                 .get('/complexes?page=2&limit=3')
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
             expect(responsePage2.status).toBe(200);
             expect(responsePage2.body.data.length).toBe(3);
             expect(responsePage2.body.meta.total).toBe(numComplexesToCreate);
@@ -253,7 +249,7 @@ describe('Complex Routes', () => {
 
             const response = await request(app)
                 .get(`/complexes?filter=${uniqueName.substring(0, 25)}`) // Use a significant part of unique name
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
             console.log(response.body)
             expect(response.status).toBe(200);
             expect(response.body.data.length).toBe(1);
@@ -285,7 +281,7 @@ describe('Complex Routes', () => {
         it('should get a specific complex if owned by the authenticated landlord', async () => {
             const response = await request(app)
                 .get(`/complexes/${complexOfLandlord.id}`)
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
             expect(response.status).toBe(200);
             expect(response.body.id).toBe(complexOfLandlord.id);
         });
@@ -293,7 +289,7 @@ describe('Complex Routes', () => {
         it('should return 404 if complex belongs to another landlord (of this run)', async () => {
             const response = await request(app)
                 .get(`/complexes/${complexOfOtherRunLandlord.id}`)
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
             expect(response.status).toBe(404);
         });
         // ... Other GET /complexes/:complexId tests (404 non-existent, 401) remain similar
@@ -301,7 +297,7 @@ describe('Complex Routes', () => {
             const nonExistentId = faker.string.uuid();
             const response = await request(app)
                 .get(`/complexes/${nonExistentId}`)
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
             expect(response.status).toBe(404);
         });
         it('should return 401 if not authenticated', async () => {
@@ -323,7 +319,7 @@ describe('Complex Routes', () => {
         it('should update a complex if owned by the authenticated landlord', async () => {
             const response = await request(app)
                 .patch(`/complexes/${complexToUpdate.id}`)
-                .set('Authorization', `Bearer ${landlordToken}`)
+                .set('Authorization', `Bearer ${landlordTokens.access}`)
                 .send(updateData);
             expect(response.status).toBe(200);
             expect(response.body.name).toBe(updateData.name);
@@ -339,7 +335,7 @@ describe('Complex Routes', () => {
             // OR await prisma.complex.delete({ where: {id: otherComplex.id }}); // manual immediate
             const response = await request(app)
                 .patch(`/complexes/${otherComplex.id}`)
-                .set('Authorization', `Bearer ${landlordToken}`)
+                .set('Authorization', `Bearer ${landlordTokens.access}`)
                 .send(updateData);
             expect(response.status).toBe(404);
              await prisma.complex.delete({where: {id: otherComplex.id}}); // Manual immediate for hygiene
@@ -348,7 +344,7 @@ describe('Complex Routes', () => {
         it('should return 400 for invalid update data', async () => {
             const response = await request(app)
                 .patch(`/complexes/${complexToUpdate.id}`)
-                .set('Authorization', `Bearer ${landlordToken}`)
+                .set('Authorization', `Bearer ${landlordTokens.access}`)
                 .send({ name: '' });
             expect(response.status).toBe(400);
         });
@@ -362,7 +358,7 @@ describe('Complex Routes', () => {
             const nonExistentId = faker.string.uuid();
             const response = await request(app)
                 .patch(`/complexes/${nonExistentId}`)
-                .set('Authorization', `Bearer ${landlordToken}`)
+                .set('Authorization', `Bearer ${landlordTokens.access}`)
                 .send(updateData);
             expect(response.status).toBe(404);
         });
@@ -380,7 +376,7 @@ describe('Complex Routes', () => {
         it('should soft delete a complex if owned by the authenticated landlord', async () => {
             const response = await request(app)
                 .delete(`/complexes/${complexToDelete.id}`)
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
             expect(response.status).toBe(200);
             expect(response.body.deletedAt).not.toBeNull();
             // The complex is soft-deleted. `afterEach` will hard-delete it via `deleteMany`.
@@ -393,7 +389,7 @@ describe('Complex Routes', () => {
             // This otherComplex will be cleaned by afterAll.
             const response = await request(app)
                 .delete(`/complexes/${otherComplex.id}`)
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
             expect(response.status).toBe(404);
             await prisma.complex.delete({where: {id: otherComplex.id}}); // Manual immediate for hygiene
         });
@@ -407,7 +403,7 @@ describe('Complex Routes', () => {
              const nonExistentId = faker.string.uuid();
             const response = await request(app)
                 .delete(`/complexes/${nonExistentId}`)
-                .set('Authorization', `Bearer ${landlordToken}`);
+                .set('Authorization', `Bearer ${landlordTokens.access}`);
             expect(response.status).toBe(404);
         });
     });
