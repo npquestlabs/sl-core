@@ -1,29 +1,46 @@
 import { Request, Response } from 'express'
 import * as authService from '../services/auth.service'
-import * as landLordService from '../services/landlord.service'
-import * as tenantService from '../services/tenant.service'
-import * as vendorService from '../services/vendor.service'
 import * as userService from '../services/user.service'
-import { generateEmailToken } from '../util/token'
 import { sendPasswordResetEmail, sendVerificationEmail } from '../util/email'
 import { AppError } from '../util/error'
+import { generateToken } from '../util/token'
+import sanitizedConfig from '../configs/environment'
+import { RegisterUserSchema } from '../schemas/user.schema'
+import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 
-export const registerLandlord = async (req: Request, res: Response) => {
+// Intentionally made the registerUser return 201 while the verifyUser return 200
+
+export const registerUser = async (req: Request, res: Response) => {
   try {
     const data = {
       email: String(req.body.email),
       firstName: String(req.body.firstName),
       lastName: String(req.body.lastName),
-    } // our validateBody middleware ensures this
-
-    const emailVerificationToken = generateEmailToken(req.body.email)
-
-    await sendVerificationEmail(data, emailVerificationToken)
-    const result = await landLordService.registerLandlordUser(req.body)
-    if (!result) {
-      return res.status(500).json({ error: 'Unable to register user' })
     }
-    res.status(201).json(result)
+    const existingUser = await userService.getUserByEmail(data.email);
+
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already exists" })
+    }
+
+    const payload = req.body as z.infer<typeof RegisterUserSchema>
+    payload.password =  await bcrypt.hash(payload.password, 10)
+
+    const token = generateToken(payload, { expiresIn: '5m' })
+    await sendVerificationEmail(data, token)
+
+    const result = {
+      message:
+        'User registered successfully. Please check your email for verification link.',
+    }
+
+    if (sanitizedConfig.environment !== 'production') {
+      // @ts-expect-error dynamically adding emailToken field to result
+      result.emailToken = token
+    }
+
+    return res.status(201).json(result)
   } catch (error) {
     if (error instanceof AppError) {
       return res.status(error.statusCode).json({ error: error.message })
@@ -32,51 +49,19 @@ export const registerLandlord = async (req: Request, res: Response) => {
   }
 }
 
-export const registerTenant = async (req: Request, res: Response) => {
+export const verifyUser = async (req: Request, res: Response) => {
   try {
-    const data = {
-      email: String(req.body.email),
-      firstName: String(req.body.firstName),
-      lastName: String(req.body.lastName),
-    } // our validateBody middleware ensures this
-
-    const emailVerificationToken = generateEmailToken(req.body.email)
-
-    await sendVerificationEmail(data, emailVerificationToken)
-    const result = await tenantService.registerTenantUser(req.body)
+    const result = await userService.createUser(req.body)
     if (!result) {
-      return res.status(500).json({ error: 'Unable to register user' })
+      return res.status(500).json({ error: 'Failed to add user' })
     }
-    res.status(201).json(result)
+    
+    return res.status(200).json(result)
   } catch (error) {
     if (error instanceof AppError) {
       return res.status(error.statusCode).json({ error: error.message })
     }
-    throw error
-  }
-}
-
-export const registerArtisan = async (req: Request, res: Response) => {
-  try {
-    const data = {
-      email: String(req.body.email),
-      firstName: String(req.body.firstName),
-      lastName: String(req.body.lastName),
-    } // our validateBody middleware ensures this
-
-    const emailVerificationToken = generateEmailToken(req.body.email)
-
-    await sendVerificationEmail(data, emailVerificationToken)
-    const result = await vendorService.registerVendorUser(req.body)
-    if (!result) {
-      return res.status(500).json({ error: 'Unable to register user' })
-    }
-    res.status(201).json(result)
-  } catch (error) {
-    if (error instanceof AppError) {
-      return res.status(error.statusCode).json({ error: error.message })
-    }
-    throw error
+    return res.status(500).json({ error: 'Failed to add user' })
   }
 }
 
@@ -87,12 +72,19 @@ export const login = async (req: Request, res: Response) => {
 }
 
 export const forgotPassword = async (req: Request, res: Response) => {
-  const { email } = req.body!
-  const token = generateEmailToken(email)
+  const { email } = req.body
+  const user = await userService.getUserByEmail(email)
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+  const token = generateToken({ email })
   await sendPasswordResetEmail(email, token)
-  return res
-    .status(200)
-    .json({ message: 'Password reset url sent to email!' })
+  const result = { message: 'Password reset url sent to email!' }
+  if (sanitizedConfig.environment !== 'production') {
+    // @ts-expect-error dynamically adding emailToken field to result
+    result.emailToken = token
+  }
+  return res.status(200).json(result)
 }
 
 export const updatePassword = async (req: Request, res: Response) => {
@@ -108,8 +100,21 @@ export const updatePassword = async (req: Request, res: Response) => {
   return res.status(200).json({ message: 'Password updated!' })
 }
 
-export const loginWithToken = async (req: Request, res: Response) => {
-  const { token } = req.body
-  const result = await authService.loginWithToken(token)
+export const loginWithEmail = async (req: Request, res: Response) => {
+  const { email } = req.body
+  const result = await authService.loginWithEmail(email)
   res.status(200).json(result)
+}
+
+export const sendVerificationLink = async (req: Request, res: Response) => {
+  const user = req.user
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  const { email } = req.body
+
+  const emailVerificationToken = generateToken({ email })
+  await sendVerificationEmail(user, emailVerificationToken)
+  return res.status(200).json({ message: 'Verification link sent!' })
 }

@@ -3,21 +3,18 @@ import { app } from '../src/configs/server'
 import { prisma } from '../src/configs/prisma'
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals'
 import { faker } from '@faker-js/faker'
-import { generateAccessToken } from '../src/util/token'
+import { generateToken } from '../src/util/token'
 import { Prisma } from '../generated/prisma'
 import bcrypt from 'bcryptjs'
 import { LocalUser } from '../src/types'
 
 let testLandlordUser: LocalUser
-let landlordToken: string
+let landlordTokens: { access: string };
 
 let otherTestLandlordUser: LocalUser
-let otherLandlordToken: string
+let otherLandlordTokens: { access: string }
 
-const createLandlordUser = async (): Promise<{
-  user: LocalUser
-  token: string
-}> => {
+const createLandlordUser = async () => {
   const email = faker.internet.email()
   const phone = faker.phone.number()
   const password = 'password123'
@@ -28,38 +25,36 @@ const createLandlordUser = async (): Promise<{
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
     passwordHash: await bcrypt.hash(password, 10),
-    isVerified: true,
     landlord: { create: {} },
   }
 
   const user = await prisma.user.create({
     data: createData,
-    include: { landlord: true, tenant: true, vendor: true }, // tenant & vendor will be null
+    include: { landlord: true, tenant: true, vendor: true },
   })
 
-  const token = generateAccessToken({
+  const accessToken = generateToken({
     id: user.id,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
-    isVerified: user.isVerified,
     landlord: user.landlord,
-    tenant: null, // Explicitly null for clarity
-    vendor: null, // Explicitly null for clarity
+    tenant: null,
+    vendor: null,
   })
-  return { user, token }
+  return { user, tokens: { access: accessToken } }
 }
 
 beforeAll(async () => {
   const landlordData = await createLandlordUser()
   testLandlordUser = landlordData.user
-  landlordToken = landlordData.token
+  landlordTokens = landlordData.tokens
 
   const otherLandlordData = await createLandlordUser()
   otherTestLandlordUser = otherLandlordData.user
-  otherLandlordToken = otherLandlordData.token
+  otherLandlordTokens = otherLandlordData.tokens
   expect(otherTestLandlordUser.id).toBeDefined()
-  expect(otherLandlordToken).toBeDefined()
+  expect(otherLandlordTokens).toBeDefined()
 })
 
 afterAll(async () => {
@@ -79,7 +74,7 @@ describe('Landlord Specific Routes', () => {
     it("should not exist as get users/me handles getting user's profile data", async () => {
       const response = await request(app)
         .get(landlordProfileRoute)
-        .set('Authorization', `Bearer ${landlordToken}`)
+        .set('Authorization', `Bearer ${landlordTokens.access}`)
 
       expect(response.status).toBe(404)
 
@@ -108,12 +103,11 @@ describe('Landlord Specific Routes', () => {
           firstName: 'Test',
           lastName: 'Tenant',
           passwordHash: 'hash',
-          isVerified: true,
           tenant: { create: {} },
         },
         include: { tenant: true },
       })
-      const tenantTokenForTest = generateAccessToken({
+      const tenantTokenForTest = generateToken({
         id: tenantUserForTest.id,
         email: tenantUserForTest.email,
         firstName: tenantUserForTest.firstName,
@@ -139,7 +133,7 @@ describe('Landlord Specific Routes', () => {
       }
       const response = await request(app)
         .patch(landlordProfileRoute)
-        .set('Authorization', `Bearer ${landlordToken}`)
+        .set('Authorization', `Bearer ${landlordTokens.access}`)
         .send(invalidData)
 
       expect(response.status).toBe(400)

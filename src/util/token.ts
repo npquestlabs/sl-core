@@ -1,33 +1,21 @@
 import jwt from 'jsonwebtoken'
 import config from '../configs/environment'
 import { AppError } from './error'
-import { LocalUser } from '../types'
 
-export function generateAccessToken(user: LocalUser): string {
-  const accessToken = jwt.sign(user, config.jwtSecret, { expiresIn: '1h' })
-
-  return accessToken
-}
-
-export function verifyAccessToken(token: string): LocalUser {
-  try {
-    const decoded = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload
-    return decoded.user
-  } catch (error) {
-    throw new AppError('Invalid or expired token', 401)
-  }
-}
-
-export function generateEmailToken(email: string): string {
-  const token = jwt.sign({ email }, config.jwtSecret, { expiresIn: '5m' })
+export function generateToken<T extends object>(
+  data: T,
+  options: jwt.SignOptions = { expiresIn: '1h' },
+): string {
+  const token = jwt.sign(data, config.jwtSecret, options)
   return token
 }
 
-export function verifyEmailToken(token: string): string {
+export function verifyToken<T>(token: string): T {
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload
-    return decoded.email
+    // A validator middleware must be used to check if the type of the decoded token is correct
+    return decoded as T
   } catch (error) {
-    throw new Error('Invalid or expired token')
+    throw new AppError('Invalid or expired token', 400)
   }
 }

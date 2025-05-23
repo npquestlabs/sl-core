@@ -1,8 +1,74 @@
 import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
-import { AppError } from '../util/error'
+import { AppError, ServerError } from '../util/error'
 import { z } from 'zod'
-import { UpdateUserSchema } from '../schemas/user.schema'
+import { RegisterUserSchema, UpdateUserSchema } from '../schemas/user.schema'
+import { Prisma } from '../../generated/prisma'
+import { sanitizeUser } from '../util'
+import { generateToken } from '../util/token'
+import config from '../configs/environment'
+import jwt from 'jsonwebtoken'
+
+export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
+  const { password, landlord, tenant, vendor, ...userData } = data
+
+  const createUserInput = {
+    ...userData,
+    passwordHash: password, // Already hashed
+  }
+
+  const createdUser = await prisma.user.create({
+    data: {
+      ...createUserInput,
+
+      landlord: {
+        ...(landlord && {
+          create: {
+            ...landlord,
+          },
+        }),
+      },
+      tenant: {
+        ...(tenant && {
+          create: {
+            ...tenant,
+          },
+        }),
+      },
+      vendor: {
+        ...(vendor && {
+          create: {
+            ...vendor,
+          },
+        }),
+      },
+    },
+    omit: {
+      passwordHash: true,
+      idType: true,
+      idNumber: true,
+      idDocumentUrl: true,
+      phone: true,
+    },
+    include: {
+      landlord: true,
+      tenant: true,
+      vendor: true,
+    },
+  })
+
+  if (!createdUser) {
+    throw new ServerError('Unable to create user')
+  }
+
+  const sanitizedUser = sanitizeUser(createdUser)
+
+  const options: jwt.SignOptions = { expiresIn: config.environment === 'production' ? '24h' : '24m' }
+
+  const accessToken = generateToken(sanitizedUser, options)
+
+  return { user: sanitizedUser, tokens: { access: accessToken } }
+}
 
 export const isUnusedEmail = async (email: string) => {
   const user = await prisma.user.findUnique({
@@ -75,19 +141,21 @@ export const getUserById = async (id: string) => {
   return user
 }
 
-export const getUserByEmail = async (email: string) => {
+export const getUserByEmail = async (
+  email: string,
+  omit: Prisma.UserOmit = {},
+  include: Prisma.UserInclude = {},
+) => {
   const user = await prisma.user.findUnique({
     where: { email },
     omit: {
+      ...omit,
       passwordHash: true,
     },
+    include,
   })
 
-  if (!user) {
-    throw new AppError('User not found', 404)
-  }
-
-  return user
+  return user ?? null
 }
 
 export const updateUserPassword = async (userId: string, password: string) => {
@@ -127,27 +195,4 @@ export const updateUserPassword = async (userId: string, password: string) => {
   })
 
   return updatedUser ?? null
-}
-
-export const verifyUserEmail = async (email: string) => {
-  const user = await prisma.user.update({
-    where: { email },
-    data: {
-      isVerified: true,
-    },
-    omit: {
-      passwordHash: true,
-      idType: true,
-      idNumber: true,
-      idDocumentUrl: true,
-      phone: true,
-    },
-    include: {
-      landlord: true,
-      tenant: true,
-      vendor: true,
-    },
-  })
-
-  return user ?? null
 }
