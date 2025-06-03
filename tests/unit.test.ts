@@ -105,14 +105,14 @@ const setupUserWithRole = async (
     profile: role === 'landlord' ? user.landlord! : user.tenant!,
     tokens: {
       access: generateToken({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      landlord: user.landlord,
-      tenant: user.tenant,
-      vendor: null,
-    }),
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        landlord: user.landlord,
+        tenant: user.tenant,
+        vendor: null,
+      }),
     }
   };
 };
@@ -242,7 +242,7 @@ describe('Unit Routes', () => {
     it('should create a new unit in the specified complex for the landlord', async () => {
       const unitDataPayload = generateUnitData('_post_new');
       const response = await request(app)
-        .post(`/complexes/${mainTestComplex.id}/units`)
+        .post(`/api/v1/complexes/${mainTestComplex.id}/units`)
         .set('Authorization', `Bearer ${landlordTokens.access}`)
         .send(unitDataPayload);
 
@@ -262,7 +262,7 @@ describe('Unit Routes', () => {
       // const otherComplex = await createComplexForTestAndTrack_intraTest({ ... })
 
       const response = await request(app)
-        .post(`/complexes/${otherComplex.id}/units`)
+        .post(`/api/v1/complexes/${otherComplex.id}/units`)
         .set('Authorization', `Bearer ${landlordTokens.access}`) // Main landlord's token
         .send(generateUnitData('_post_other_complex'));
       expect(response.status).toBe(404);
@@ -270,7 +270,7 @@ describe('Unit Routes', () => {
 
     it('should return 401 if not authenticated', async () => {
       const response = await request(app)
-        .post(`/complexes/${mainTestComplex.id}/units`)
+        .post(`/api/v1/complexes/${mainTestComplex.id}/units`)
         .send(generateUnitData('_post_unauth'));
       expect(response.status).toBe(401);
     });
@@ -289,7 +289,7 @@ describe('Unit Routes', () => {
 
     it('should get units for a complex owned by the landlord', async () => {
       const response = await request(app)
-        .get(`/complexes/${mainTestComplex.id}/units`)
+        .get(`/api/v1/complexes/${mainTestComplex.id}/units`)
         .set('Authorization', `Bearer ${landlordTokens.access}`);
 
       expect(response.status).toBe(200);
@@ -305,7 +305,7 @@ describe('Unit Routes', () => {
       // This otherComplex will be cleaned by afterAll.
 
       const response = await request(app)
-        .get(`/complexes/${otherComplex.id}/units`)
+        .get(`/api/v1/complexes/${otherComplex.id}/units`)
         .set('Authorization', `Bearer ${landlordTokens.access}`);
       expect(response.status).toBe(403); // Or 404 if your API treats it as not found for this user
     });
@@ -324,7 +324,7 @@ describe('Unit Routes', () => {
 
     it('should get a specific unit if landlord owns the complex', async () => {
       const response = await request(app)
-        .get(`/units/${testUnit.id}`)
+        .get(`/api/v1/units/${testUnit.id}`)
         .set('Authorization', `Bearer ${landlordTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.id).toBe(testUnit.id);
@@ -333,7 +333,7 @@ describe('Unit Routes', () => {
     it('should return 404 if tenant tries to access unit not assigned to them', async () => {
       // testUnit is created by beforeEach but NOT assigned to the main tenantToken's user
       const response = await request(app)
-        .get(`/units/${testUnit.id}`)
+        .get(`/api/v1/units/${testUnit.id}`)
         .set('Authorization', `Bearer ${tenantTokens.access}`);
       expect(response.status).toBe(404);
     });
@@ -353,7 +353,7 @@ describe('Unit Routes', () => {
 
     it('should update a unit if landlord owns the complex', async () => {
       const response = await request(app)
-        .patch(`/units/${unitToUpdate.id}`)
+        .patch(`/api/v1/units/${unitToUpdate.id}`)
         .set('Authorization', `Bearer ${landlordTokens.access}`)
         .send(updatePayload);
       expect(response.status).toBe(200);
@@ -362,7 +362,7 @@ describe('Unit Routes', () => {
 
     it('should return 403 if tenant tries to update a unit', async () => {
       const response = await request(app)
-        .patch(`/units/${unitToUpdate.id}`)
+        .patch(`/api/v1/units/${unitToUpdate.id}`)
         .set('Authorization', `Bearer ${tenantTokens.access}`)
         .send(updatePayload);
       expect(response.status).toBe(403);
@@ -378,7 +378,7 @@ describe('Unit Routes', () => {
       // These (otherComplex, unitInOtherComplex) will be cleaned by afterAll.
 
       const response = await request(app)
-        .patch(`/units/${unitInOtherComplex.id}`)
+        .patch(`/api/v1/units/${unitInOtherComplex.id}`)
         .set('Authorization', `Bearer ${landlordTokens.access}`) // Main landlord's token
         .send(updatePayload);
       expect(response.status).toBe(404);
@@ -402,7 +402,7 @@ describe('Unit Routes', () => {
 
     it('should soft delete a unit if landlord owns the complex', async () => {
       const response = await request(app)
-        .delete(`/units/${unitToDelete.id}`)
+        .delete(`/api/v1/units/${unitToDelete.id}`)
         .set('Authorization', `Bearer ${landlordTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.deletedAt).not.toBeNull();
@@ -419,7 +419,7 @@ describe('Unit Routes', () => {
       // These will be cleaned by afterAll.
 
       const response = await request(app)
-        .delete(`/units/${unitInOtherComplex.id}`)
+        .delete(`/api/v1/units/${unitInOtherComplex.id}`)
         .set('Authorization', `Bearer ${landlordTokens.access}`); // Main landlord's token
       expect(response.status).toBe(404);
 
