@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "lint": "eslint src/**/*.ts --fix",
     "test": "jest",
-    "format": "prettier src/**/*.ts --write"
+    "format": "prettier src/**/*.ts --write",
+    "doc": "echo 'Swagger docs are now served with the main app. Use npm run dev or npm start.'"
   },
   "keywords": [],
   "author": "",
@@ -27,6 +28,8 @@
     "@types/nodemailer": "^6.4.17",
     "@types/pdfkit": "^0.13.9",
     "@types/supertest": "^6.0.3",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^6.17.0",
     "@typescript-eslint/parser": "^6.17.0",
     "dotenv-cli": "^8.0.0",
@@ -61,7 +64,10 @@
     "morgan": "^1.10.0",
     "nodemailer": "^6.10.1",
     "pdfkit": "^0.17.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "winston": "^3.11.0",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "zod-openapi": "^4.2.4"
   }
 }
