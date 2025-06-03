@@ -39,6 +39,10 @@ const router = express.Router()
  *                   description: Only present in non-production environments.
  *       400:
  *         description: Email already exists or validation error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/register', validateBody(RegisterUserSchema), authController.registerUser)
 
@@ -47,7 +51,7 @@ router.post('/register', validateBody(RegisterUserSchema), authController.regist
  * /auth/verify:
  *   post:
  *     summary: Verify a new user
- *     description: Complete registration by verifying the user with a token. The token is sent to the user's email after registration. On success, returns a JWT and user info.
+ *     description: Complete registration by verifying the user with a token. The token is sent to the user's email after registration. On success, returns user and tokens.
  *     requestBody:
  *       required: true
  *       content:
@@ -56,21 +60,23 @@ router.post('/register', validateBody(RegisterUserSchema), authController.regist
  *             $ref: '#/components/schemas/Token'
  *     responses:
  *       200:
- *         description: User verified and created successfully. Returns user and JWT token.
+ *         description: User verified and created successfully. Returns user and tokens.
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 user:
- *                   $ref: '#/components/schemas/RegisterUser'
- *                 token:
- *                   type: string
- *                   description: JWT token for authentication.
+ *               $ref: '#/components/schemas/AuthSuccessResponse'
  *       400:
  *         description: Invalid or expired token.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: Failed to add user.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/verify', validateBody(TokenSchema), transformTokenBody(RegisterUserSchema), authController.verifyUser)
 
@@ -94,7 +100,17 @@ router.post('/verify', validateBody(TokenSchema), transformTokenBody(RegisterUse
  *             schema:
  *               $ref: '#/components/schemas/AuthSuccessResponse'
  *       400:
+ *         description: Validation error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
  *         description: Invalid credentials.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/login', validateBody(LoginSchema), authController.login)
 
@@ -123,8 +139,18 @@ router.post('/login', validateBody(LoginSchema), authController.login)
  *                 emailToken:
  *                   type: string
  *                   description: Only present in non-production environments.
+ *       400:
+ *         description: Validation error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: User not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/forgot-password', validateBody(EmailSchema), authController.forgotPassword)
 
@@ -151,6 +177,10 @@ router.post('/forgot-password', validateBody(EmailSchema), authController.forgot
  *               $ref: '#/components/schemas/AuthSuccessResponse'
  *       400:
  *         description: Invalid or expired token.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/verifications/use', validateBody(TokenSchema), transformTokenBody(EmailSchema), authController.loginWithEmail)
 
@@ -171,6 +201,10 @@ router.post('/verifications/use', validateBody(TokenSchema), transformTokenBody(
  *               $ref: '#/components/schemas/MessageResponse'
  *       401:
  *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/verifications/new', authenticate, authController.sendVerificationLink) // is no longer needed
 
@@ -198,10 +232,24 @@ router.post('/verifications/new', authenticate, authController.sendVerificationL
  *               properties:
  *                 message:
  *                   type: string
+ *       400:
+ *         description: Validation error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: Failed to update password.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/reset-password', authenticate, validateBody(PasswordSchema), authController.updatePassword)
 

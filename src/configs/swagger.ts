@@ -1,6 +1,5 @@
 import swaggerUi from 'swagger-ui-express';
 import { RegisterUserSchema, LoginSchema, EmailSchema, TokenSchema, PasswordSchema } from '../schemas/user.schema';
-import { AuthTokensSchema, AuthSuccessResponseSchema, MessageResponseSchema } from '../schemas/auth.schema';
 import { extendZodWithOpenApi, createDocument } from 'zod-openapi';
 import swaggerJsdoc from 'swagger-jsdoc';
 import { z } from 'zod';
@@ -13,9 +12,7 @@ LoginSchema.openapi({ ref: 'Login', description: 'Login with email and password'
 EmailSchema.openapi({ ref: 'Email', description: 'Email address for verification or password reset' });
 TokenSchema.openapi({ ref: 'Token', description: 'Token for verification or authentication' });
 PasswordSchema.openapi({ ref: 'Password', description: 'Password for reset or authentication' });
-AuthTokensSchema.openapi({ ref: 'AuthTokens', description: 'Authentication tokens' });
-AuthSuccessResponseSchema.openapi({ ref: 'AuthSuccessResponse', description: 'Successful authentication response' });
-MessageResponseSchema.openapi({ ref: 'MessageResponse', description: 'Simple message response' });
+
 
 export const openApiDoc = createDocument({
     openapi: '3.0.0',
@@ -44,9 +41,62 @@ export const openApiDoc = createDocument({
             Email: EmailSchema,
             Token: TokenSchema,
             Password: PasswordSchema,
-            AuthTokens: AuthTokensSchema,
-            AuthSuccessResponse: AuthSuccessResponseSchema,
-            MessageResponse: MessageResponseSchema,
+            User: {
+                type: 'object',
+                properties: {
+                    id: { type: 'string', example: 'user-uuid' },
+                    firstName: { type: 'string', example: 'John' },
+                    lastName: { type: 'string', example: 'Doe' },
+                    email: { type: 'string', format: 'email', example: 'user@example.com' },
+                    landlord: {
+                        type: 'object',
+                        nullable: true,
+                        additionalProperties: true,
+                        description: 'Landlord profile data if user is a landlord'
+                    },
+                    tenant: {
+                        type: 'object',
+                        nullable: true,
+                        additionalProperties: true,
+                        description: 'Tenant profile data if user is a tenant'
+                    },
+                    vendor: {
+                        type: 'object',
+                        nullable: true,
+                        additionalProperties: true,
+                        description: 'Vendor profile data if user is a vendor'
+                    }
+                },
+                required: ['id', 'firstName', 'lastName', 'email', 'landlord', 'tenant', 'vendor']
+            },
+            AuthSuccessResponse: {
+                type: 'object',
+                properties: {
+                    user: { $ref: '#/components/schemas/User' },
+                    tokens: {
+                        type: 'object',
+                        properties: {
+                            access: { type: 'string', example: 'jwt-access-token' }
+                        },
+                        required: ['access']
+                    }
+                },
+                required: ['user', 'tokens']
+            },
+            MessageResponse: {
+                type: 'object',
+                properties: {
+                    message: { type: 'string', example: 'Operation successful' }
+                },
+                required: ['message']
+            },
+            ErrorResponse: {
+                type: 'object',
+                properties: {
+                    error: { type: 'string', example: 'Error message' }
+                },
+                required: ['error']
+            },
         },
     },
 });
