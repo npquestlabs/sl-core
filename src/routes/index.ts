@@ -4,6 +4,9 @@ import userRoutes from './user.routes'
 import complexRoutes from './complex.routes'
 import unitRoutes from './unit.routes'
 import landlordRoutes from './landlord.routes'
+import paymentRoutes from './payment.routes'
+import maintenanceRoutes from './maintenance.routes'
+import swaggerConfig from '../configs/swagger'
 
 const router = express.Router()
 
@@ -16,5 +19,8 @@ router.use('/users', userRoutes)
 router.use('/complexes', complexRoutes)
 router.use('/units', unitRoutes)
 router.use('/landlords', landlordRoutes)
+router.use('/payments', paymentRoutes)
+router.use('/maintenance', maintenanceRoutes)
+router.use('/docs', swaggerConfig.swaggerUi.serve, swaggerConfig.swaggerUi.setup(swaggerConfig.swaggerSpec))
 
 export default router

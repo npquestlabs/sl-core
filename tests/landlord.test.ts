@@ -62,7 +62,7 @@ afterAll(async () => {
 })
 
 describe('Landlord Specific Routes', () => {
-  const landlordProfileRoute = '/landlords/me'
+  const landlordProfileRoute = '/api/v1/landlords/me'
 
   describe(`GET ${landlordProfileRoute}`, () => {
     const landlordProfileData = {

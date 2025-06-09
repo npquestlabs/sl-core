@@ -48,7 +48,7 @@ app.use(hpp())
 app.use(morgan('combined'))
 
 // Use routes
-app.use('/', routes)
+app.use('/api/v1', routes)
 
 // Error handling middleware
 app.use(errorHandler)

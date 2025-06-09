@@ -89,3 +89,16 @@ export const TokenSchema = z.object({
 export const PasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters long'),
 })
+
+export const AuthTokensSchema = z.object({
+  access: z.string(),
+})
+
+export const AuthSuccessResponseSchema = z.object({
+  user: RegisterUserSchema,
+  tokens: AuthTokensSchema,
+})
+
+export const MessageResponseSchema = z.object({
+  message: z.string(),
+})

@@ -65,7 +65,7 @@ const setupVerifiedUser = async (
     // Step 1: /auth/register endpoint is hit with full registration data (including password)
     // The backend hashes the password and includes it (or its hash) in the verificationToken payload.
     const registerResponse = await request(app)
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registrationData);
 
     if (registerResponse.status !== 201 && registerResponse.status !== 202) {
@@ -81,7 +81,7 @@ const setupVerifiedUser = async (
     // The backend decodes this token, extracts user data (including the pre-hashed password),
     // and creates the user record in the database.
     const verifyResponse = await request(app)
-        .post('/auth/verify')
+        .post('/api/v1/auth/verify')
         .send({ token: verificationToken }); // <<<<< KEY CHANGE: Only token is sent
 
     if (verifyResponse.status !== 200 && verifyResponse.status !== 201) {
@@ -152,7 +152,7 @@ describe('Auth Routes', () => {
             const landlordRegData = generateUserRegistrationData('landlord');
 
             const registerResponse = await request(app)
-                .post('/auth/register')
+                .post('/api/v1/auth/register')
                 .send(landlordRegData);
             expect(registerResponse.status).toBe(201);
             const { emailToken: verificationToken } = registerResponse.body as RegisterApiResponse;
@@ -163,7 +163,7 @@ describe('Auth Routes', () => {
 
             // CORRECTED /auth/verify call
             const verificationResponse = await request(app)
-                .post('/auth/verify')
+                .post('/api/v1/auth/verify')
                 .send({ token: verificationToken }); // ONLY token is sent
             expect(verificationResponse.status).toBe(200);
             const verifiedAuthData = verificationResponse.body as AuthResponseData;
@@ -183,7 +183,7 @@ describe('Auth Routes', () => {
             expect(dbUserAfterVerify?.vendor).toBeNull();
 
             const loginResponse = await request(app)
-                .post('/auth/login')
+                .post('/api/v1/auth/login')
                 .send({ email: landlordRegData.email, password: landlordRegData.password });
             expect(loginResponse.status).toBe(200);
             const { user: loggedInUser } = loginResponse.body as AuthResponseData;
@@ -192,12 +192,12 @@ describe('Auth Routes', () => {
 
         it('should register a new tenant and verify successfully (token only to /verify)', async () => {
             const tenantRegData = generateUserRegistrationData('tenant');
-            const registerResponse = await request(app).post('/auth/register').send(tenantRegData);
+            const registerResponse = await request(app).post('/api/v1/auth/register').send(tenantRegData);
             expect(registerResponse.status).toBe(201);
             const { emailToken: verificationToken } = registerResponse.body as RegisterApiResponse;
 
             const verificationResponse = await request(app)
-                .post('/auth/verify')
+                .post('/api/v1/auth/verify')
                 .send({ token: verificationToken });
             expect(verificationResponse.status).toBe(200);
             const { user: verifiedUserFromApi } = verificationResponse.body as AuthResponseData;
@@ -214,12 +214,12 @@ describe('Auth Routes', () => {
 
         it('should register a new vendor and verify successfully (token only to /verify)', async () => {
             const vendorRegData = generateUserRegistrationData('vendor');
-            const registerResponse = await request(app).post('/auth/register').send(vendorRegData);
+            const registerResponse = await request(app).post('/api/v1/auth/register').send(vendorRegData);
             expect(registerResponse.status).toBe(201);
             const { emailToken: verificationToken } = registerResponse.body as RegisterApiResponse;
 
             const verificationResponse = await request(app)
-                .post('/auth/verify')
+                .post('/api/v1/auth/verify')
                 .send({ token: verificationToken });
             expect(verificationResponse.status).toBe(200);
             const { user: verifiedUserFromApi } = verificationResponse.body as AuthResponseData;
@@ -240,17 +240,17 @@ describe('Auth Routes', () => {
                 ...generateUserRegistrationData('tenant', 'conflict_with_foundational'),
                 email: foundationalUser.email,
             };
-            const response = await request(app).post('/auth/register').send(conflictingData);
+            const response = await request(app).post('/api/v1/auth/register').send(conflictingData);
             expect([400, 409, 500]).toContain(response.status);
             expect(response.body.error).toMatch(/Email already exists|is already in use/i);
         });
-        
+
         it('should return 400 if /auth/verify is called with a token for an email that now conflicts with an existing user', async () => {
             const regData1 = generateUserRegistrationData('tenant', 'verify_conflict_1_final');
-            const regResponse1 = await request(app).post('/auth/register').send(regData1);
+            const regResponse1 = await request(app).post('/api/v1/auth/register').send(regData1);
             const token1 = (regResponse1.body as RegisterApiResponse).emailToken;
             expect(token1).toBeDefined();
-        
+
             await prisma.user.create({
                 data: {
                     email: regData1.email!, // Added non-null assertion as email is required
@@ -261,11 +261,11 @@ describe('Auth Routes', () => {
                     tenant: { create: {} }
                 }
             });
-        
+
             const verifyResponse1 = await request(app)
-                .post('/auth/verify')
+                .post('/api/v1/auth/verify')
                 .send({ token: token1 });
-        
+
             expect([400, 500, 409]).toContain(verifyResponse1.status);
         });
 
@@ -273,7 +273,7 @@ describe('Auth Routes', () => {
         it('should return 400 if registration data is missing a user type', async () => {
             const invalidData = generateUserRegistrationData('landlord', 'missing_type_final');
             delete invalidData.landlord;
-            const response = await request(app).post('/auth/register').send(invalidData);
+            const response = await request(app).post('/api/v1/auth/register').send(invalidData);
             expect(response.status).toBe(400);
             expect(response.body.error).toMatch('Exactly one role is required');
         });
@@ -281,21 +281,21 @@ describe('Auth Routes', () => {
         it('should return 400 if registration data includes more than one user type', async () => {
             const invalidData = generateUserRegistrationData('landlord', 'multi_type_final');
             invalidData.tenant = {};
-            const response = await request(app).post('/auth/register').send(invalidData);
+            const response = await request(app).post('/api/v1/auth/register').send(invalidData);
             expect(response.status).toBe(400);
             expect(response.body.error).toMatch('Exactly one role is required');
         });
 
         it('should return 400 for invalid email format during registration', async () => {
             const invalidData = { ...generateUserRegistrationData('tenant'), email: 'invalid-email-yo' };
-            const response = await request(app).post('/auth/register').send(invalidData);
+            const response = await request(app).post('/api/v1/auth/register').send(invalidData);
             expect(response.status).toBe(400);
             expect(response.body.error).toBeDefined();
         });
 
         it('should return 400 for an invalid/expired verification token during /auth/verify', async () => {
             const response = await request(app)
-                .post('/auth/verify')
+                .post('/api/v1/auth/verify')
                 .send({ token: 'thisTokenIsExtremelyFake123' });
             expect(response.status).toBe(400);
             expect(response.body.error).toBeDefined();
@@ -303,9 +303,9 @@ describe('Auth Routes', () => {
 
         it('should NOT allow login before /auth/verify (user does not exist yet)', async () => {
             const userData = generateUserRegistrationData('tenant', 'login_no_verify_final_check');
-            await request(app).post('/auth/register').send(userData);
+            await request(app).post('/api/v1/auth/register').send(userData);
             const loginResponse = await request(app)
-                .post('/auth/login')
+                .post('/api/v1/auth/login')
                 .send({ email: userData.email, password: userData.password });
             expect(loginResponse.status).toBe(401);
             expect(loginResponse.body.error).toBeDefined();
@@ -318,7 +318,7 @@ describe('Auth Routes', () => {
     describe('POST /auth/login', () => {
         it('should login an existing (verified) user successfully', async () => {
             const response = await request(app)
-                .post('/auth/login')
+                .post('/api/v1/auth/login')
                 .send({ email: foundationalUser.email, password: testPasswordGlobal });
 
             expect(response.status).toBe(200);
@@ -328,7 +328,7 @@ describe('Auth Routes', () => {
         });
         it('should return 401 for incorrect password', async () => {
             const response = await request(app)
-                .post('/auth/login')
+                .post('/api/v1/auth/login')
                 .send({ email: foundationalUser.email, password: 'completelyWrongPasswordAgain' });
             expect(response.status).toBe(401);
             expect(response.body.error).toBe('Invalid email or password');
@@ -337,7 +337,7 @@ describe('Auth Routes', () => {
         it('should return 401 for non-existent user', async () => {
             const nonExistentEmail = `${runIdPrefix}_login_nonexistent_${faker.internet.email().toLowerCase()}`;
             const response = await request(app)
-                .post('/auth/login')
+                .post('/api/v1/auth/login')
                 .send({ email: nonExistentEmail, password: testPasswordGlobal });
             expect(response.status).toBe(401);
             expect(response.body.error).toBe('Invalid email or password');
@@ -345,7 +345,7 @@ describe('Auth Routes', () => {
 
         it('should return 400 for invalid login data (bad email format)', async () => {
             const response = await request(app)
-                .post('/auth/login')
+                .post('/api/v1/auth/login')
                 .send({ email: 'thisIsNotAValidEmail', password: testPasswordGlobal });
             expect(response.status).toBe(400);
             expect(response.body.error).toMatch(/Invalid email address/i);
@@ -357,42 +357,42 @@ describe('Auth Routes', () => {
 
         it('should allow full password reset cycle', async () => {
             const forgotResponse = await request(app)
-                .post('/auth/forgot-password')
+                .post('/api/v1/auth/forgot-password')
                 .send({ email: foundationalUser.email });
             expect(forgotResponse.status).toBe(200);
             const { emailToken: magicLinkToken } = forgotResponse.body as RegisterApiResponse;
             expect(magicLinkToken).toBeDefined();
 
             const magicLoginResponse = await request(app)
-                .post('/auth/verifications/use')
+                .post('/api/v1/auth/verifications/use')
                 .send({ token: magicLinkToken });
             expect(magicLoginResponse.status).toBe(200);
             const { tokens: { access: sessionAccessToken } } = magicLoginResponse.body as AuthResponseData;
             expect(sessionAccessToken).toBeDefined();
 
             const resetResponse = await request(app)
-                .post('/auth/reset-password')
+                .post('/api/v1/auth/reset-password')
                 .set('Authorization', `Bearer ${sessionAccessToken}`)
                 .send({ password: newPasswordForReset });
             expect(resetResponse.status).toBe(200);
             expect(resetResponse.body.message).toContain('Password updated!');
 
             const loginOldPwdResponse = await request(app)
-                .post('/auth/login')
+                .post('/api/v1/auth/login')
                 .send({ email: foundationalUser.email, password: testPasswordGlobal });
             expect(loginOldPwdResponse.status).toBe(401);
 
             const loginNewPwdResponse = await request(app)
-                .post('/auth/login')
+                .post('/api/v1/auth/login')
                 .send({ email: foundationalUser.email, password: newPasswordForReset });
             expect(loginNewPwdResponse.status).toBe(200);
             const { user: loggedInUser } = loginNewPwdResponse.body as AuthResponseData;
             expect(loggedInUser.email).toBe(foundationalUser.email);
         });
-         it('should return 404 for forgot password if email does not exist', async () => {
+        it('should return 404 for forgot password if email does not exist', async () => {
             const nonExistentEmail = `${runIdPrefix}_forgot_pw_nonexistent_${faker.internet.email().toLowerCase()}`;
             const response = await request(app)
-                .post('/auth/forgot-password')
+                .post('/api/v1/auth/forgot-password')
                 .send({ email: nonExistentEmail });
             expect(response.status).toBe(404);
             expect(response.body.error).toContain('User not found');
@@ -400,7 +400,7 @@ describe('Auth Routes', () => {
 
         it('should return 400/401 for invalid magic link token on /verifications/use', async () => {
             const response = await request(app)
-                .post('/auth/verifications/use')
+                .post('/api/v1/auth/verifications/use')
                 .send({ token: 'utterlyInvalidMagicToken' });
             expect(response.status).toBe(400);
             expect(response.body.error).toBeDefined()
@@ -408,7 +408,7 @@ describe('Auth Routes', () => {
 
         it('should require authentication for /reset-password and fail if not authenticated', async () => {
             const response = await request(app)
-                .post('/auth/reset-password')
+                .post('/api/v1/auth/reset-password')
                 .send({ password: newPasswordForReset });
             expect(response.status).toBe(401);
             expect(response.body.error).toBeDefined()
@@ -418,10 +418,10 @@ describe('Auth Routes', () => {
     describe('Access Control (Simulating unverified state for protected routes)', () => {
         it('should prevent login if /auth/verify was never completed (user effectively does not exist)', async () => {
             const regData = generateUserRegistrationData('tenant', 'never_verified_access_final_check');
-            await request(app).post('/auth/register').send(regData);
+            await request(app).post('/api/v1/auth/register').send(regData);
 
             const loginResponse = await request(app)
-                .post('/auth/login')
+                .post('/api/v1/auth/login')
                 .send({ email: regData.email, password: regData.password });
             expect(loginResponse.status).toBe(401);
             expect(loginResponse.body.error).toBeDefined()
@@ -429,7 +429,7 @@ describe('Auth Routes', () => {
 
         it('should allow an existing (verified) user to access a protected route', async () => {
             const response = await request(app)
-                .get('/users/me')
+                .get('/api/v1/users/me')
                 .set('Authorization', `Bearer ${foundationalUserToken}`);
             expect(response.status).toBe(200);
             const { email: responseEmail } = response.body as LocalUser;
@@ -438,7 +438,7 @@ describe('Auth Routes', () => {
 
         it('should be blocked by `authenticate` middleware if no token is provided for a protected route', async () => {
             const response = await request(app)
-                .get('/users/me');
+                .get('/api/v1/users/me');
             expect(response.status).toBe(401);
             expect(response.body.error).toBeDefined()
         });

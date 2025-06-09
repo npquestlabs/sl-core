@@ -79,14 +79,14 @@ const setupUserWithRole = async (
     user,
     tokens: {
       access: generateToken({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      landlord: user.landlord,
-      tenant: user.tenant,
-      vendor: user.vendor,
-    }),
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        landlord: user.landlord,
+        tenant: user.tenant,
+        vendor: user.vendor,
+      }),
     }
   };
 };
@@ -152,9 +152,9 @@ afterEach(async () => {
   // Order: Profiles -> Users
   if (testCreatedUserIds_intraTest.length > 0) {
     // Delete profiles linked to these intra-test users first
-    await prisma.landlord.deleteMany({ where: { user: { id: { in: testCreatedUserIds_intraTest }} } });
-    await prisma.tenant.deleteMany({ where: { user: { id: { in: testCreatedUserIds_intraTest }} }});
-    await prisma.vendor.deleteMany({ where: { user: { id: { in: testCreatedUserIds_intraTest }} } });
+    await prisma.landlord.deleteMany({ where: { user: { id: { in: testCreatedUserIds_intraTest } } } });
+    await prisma.tenant.deleteMany({ where: { user: { id: { in: testCreatedUserIds_intraTest } } } });
+    await prisma.vendor.deleteMany({ where: { user: { id: { in: testCreatedUserIds_intraTest } } } });
 
     // Then delete the intra-test users themselves
     await prisma.user.deleteMany({ where: { id: { in: testCreatedUserIds_intraTest } } });
@@ -165,7 +165,7 @@ describe('User Routes (/users)', () => {
   describe('GET /users/me', () => {
     it('should get current landlord user details', async () => {
       const response = await request(app)
-        .get('/users/me')
+        .get('/api/v1/users/me')
         .set('Authorization', `Bearer ${landlordTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.id).toBe(landlordUser.id);
@@ -176,7 +176,7 @@ describe('User Routes (/users)', () => {
 
     it('should get current tenant user details', async () => {
       const response = await request(app)
-        .get('/users/me')
+        .get('/api/v1/users/me')
         .set('Authorization', `Bearer ${tenantTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.id).toBe(tenantUser.id);
@@ -187,7 +187,7 @@ describe('User Routes (/users)', () => {
 
     it('should get current vendor user details', async () => {
       const response = await request(app)
-        .get('/users/me')
+        .get('/api/v1/users/me')
         .set('Authorization', `Bearer ${vendorTokens.access}`);
       expect(response.status).toBe(200);
       expect(response.body.id).toBe(vendorUser.id);
@@ -197,7 +197,7 @@ describe('User Routes (/users)', () => {
     });
 
     it('should return 401 if not authenticated', async () => {
-      const response = await request(app).get('/users/me');
+      const response = await request(app).get('/api/v1/users/me');
       expect(response.status).toBe(401);
     });
   });
@@ -212,7 +212,7 @@ describe('User Routes (/users)', () => {
     it('should update current user (landlord) details (firstName, lastName)', async () => {
       const updateData = generateUpdateData();
       const response = await request(app)
-        .patch('/users/me')
+        .patch('/api/v1/users/me')
         .set('Authorization', `Bearer ${landlordTokens.access}`)
         .send(updateData);
 
@@ -234,7 +234,7 @@ describe('User Routes (/users)', () => {
     it('should update current user (tenant) details (firstName, lastName)', async () => {
       const updateData = generateUpdateData();
       const response = await request(app)
-        .patch('/users/me')
+        .patch('/api/v1/users/me')
         .set('Authorization', `Bearer ${tenantTokens.access}`)
         .send(updateData);
 
@@ -253,14 +253,14 @@ describe('User Routes (/users)', () => {
         phone: '123-invalid-for-this-test-payload' // Assuming phone update is validated differently or not part of simple patch
       };
       const response = await request(app)
-        .patch('/users/me')
+        .patch('/api/v1/users/me')
         .set('Authorization', `Bearer ${landlordTokens.access}`)
         .send(invalidUpdatePayload);
-        
+
       // This expectation depends on your API's behavior:
       // If it ignores these fields and there's nothing else to update, it might be 200 (no change) or 400.
       // Assuming 400 if no *valid* updatable fields are provided or if fields are explicitly disallowed.
-      expect(response.status).toBe(400); 
+      expect(response.status).toBe(400);
       if (response.body.error) { // Or specific error messages your API returns
         expect(response.body.error).toBeDefined();
       }
@@ -275,22 +275,22 @@ describe('User Routes (/users)', () => {
       const isPasswordSame = await bcrypt.compare('password123', dbUser?.passwordHash || '');
       expect(isPasswordSame).toBe(true); // Original password should still be valid
     });
-    
-    it('should return 400 if sending an empty payload or payload with no valid updatable fields', async () => {
-        const response = await request(app)
-            .patch('/users/me')
-            .set('Authorization', `Bearer ${landlordTokens.access}`)
-            .send({}); // Empty payload
 
-        expect(response.status).toBe(400); // Assuming this is the desired behavior for no actual changes
-        if (response.body.error) {
-            expect(response.body.error).toBeDefined();
-        }
+    it('should return 400 if sending an empty payload or payload with no valid updatable fields', async () => {
+      const response = await request(app)
+        .patch('/api/v1/users/me')
+        .set('Authorization', `Bearer ${landlordTokens.access}`)
+        .send({}); // Empty payload
+
+      expect(response.status).toBe(400); // Assuming this is the desired behavior for no actual changes
+      if (response.body.error) {
+        expect(response.body.error).toBeDefined();
+      }
     });
 
 
     it('should return 401 if not authenticated', async () => {
-      const response = await request(app).patch('/users/me').send(generateUpdateData());
+      const response = await request(app).patch('/api/v1/users/me').send(generateUpdateData());
       expect(response.status).toBe(401);
     });
   });
