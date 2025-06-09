@@ -1,5 +1,5 @@
 import express from 'express'
-import { authenticate } from '../middlewares/auth.middleware'
+import { authenticate, me } from '../middlewares/auth.middleware'
 import { transformTokenBody, validateBody } from '../middlewares/validator.middleware'
 import * as authController from '../controllers/auth.controller'
 import {
@@ -252,5 +252,8 @@ router.post('/verifications/new', authenticate, authController.sendVerificationL
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/reset-password', authenticate, validateBody(PasswordSchema), authController.updatePassword)
+
+
+router.get('/me', me)
 
 export default router
