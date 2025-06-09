@@ -253,7 +253,30 @@ router.post('/verifications/new', authenticate, authController.sendVerificationL
  */
 router.post('/reset-password', authenticate, validateBody(PasswordSchema), authController.updatePassword)
 
-
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user from JWT
+ *     description: Returns the user payload from the JWT token of the currently authenticated user. This does not perform a database lookup.
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user payload from JWT
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 router.get('/me', me)
 
 export default router
