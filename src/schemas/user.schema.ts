@@ -10,14 +10,14 @@ export const RegisterTenantSchema = z.object({})
 export const RegisterLandlordSchema = z.object({})
 
 export const RegisterArtisanSchema = z.object({
-  specialty: z.string().min(1, 'Specialty is required'),
+  specialty: z.string().optional().default("N/A"),
 })
 
 export const RegisterUserSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
+  firstName: z.string().optional().default(''),
+  lastName: z.string().optional().default(''),
+  phone: z.string().optional().default(''),
   email: z.string().email('Invalid email address'),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
   landlord: RegisterLandlordSchema.optional(),
   tenant: RegisterTenantSchema.optional(),

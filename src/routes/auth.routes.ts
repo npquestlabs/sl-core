@@ -18,6 +18,8 @@ const router = express.Router()
  *   post:
  *     summary: Register a new user
  *     description: Register a new user (Tenant, Landlord, or Vendor). Only one role is allowed per registration.
+ *     tags:
+ *       - Auth
  *     requestBody:
  *       required: true
  *       content:
@@ -52,6 +54,8 @@ router.post('/register', validateBody(RegisterUserSchema), authController.regist
  *   post:
  *     summary: Verify a new user
  *     description: Complete registration by verifying the user with a token. The token is sent to the user's email after registration. On success, returns user and tokens.
+ *     tags:
+ *       - Auth
  *     requestBody:
  *       required: true
  *       content:
@@ -86,6 +90,8 @@ router.post('/verify', validateBody(TokenSchema), transformTokenBody(RegisterUse
  *   post:
  *     summary: Login a user
  *     description: Login with email and password.
+ *     tags:
+ *       - Auth
  *     requestBody:
  *       required: true
  *       content:
@@ -120,6 +126,8 @@ router.post('/login', validateBody(LoginSchema), authController.login)
  *   post:
  *     summary: Request password reset
  *     description: Send a password reset link to the user's email.
+ *     tags:
+ *       - Auth
  *     requestBody:
  *       required: true
  *       content:
@@ -160,6 +168,8 @@ router.post('/forgot-password', validateBody(EmailSchema), authController.forgot
  *   post:
  *     summary: Login with email verification token
  *     description: Login using a verification token sent to email.
+ *     tags:
+ *       - Auth
  *     requestBody:
  *       required: true
  *       content:
@@ -190,6 +200,8 @@ router.post('/verifications/use', validateBody(TokenSchema), transformTokenBody(
  *   post:
  *     summary: Send a new verification link (deprecated)
  *     description: Send a new verification link to the authenticated user. (Deprecated)
+ *     tags:
+ *       - Auth
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -214,6 +226,8 @@ router.post('/verifications/new', authenticate, authController.sendVerificationL
  *   post:
  *     summary: Reset user password
  *     description: Authenticated user can reset their password.
+ *     tags:
+ *       - Auth
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -253,7 +267,30 @@ router.post('/verifications/new', authenticate, authController.sendVerificationL
  */
 router.post('/reset-password', authenticate, validateBody(PasswordSchema), authController.updatePassword)
 
-
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user from JWT
+ *     description: Returns the user payload from the JWT token of the currently authenticated user. This does not perform a database lookup.
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user payload from JWT
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 router.get('/me', me)
 
 export default router

@@ -108,7 +108,7 @@ const sendEmail = async (mailOptions: nodemailer.SendMailOptions) => {
 
 export const sendVerificationEmail = async (user: { email: string; firstName: string; lastName: string; }, token: string) => {
   const subject = 'Verify Your Email Address'
-  const verificationLink = `${config.clientUrl}/verify-email?token=${token}`
+  const verificationLink = `${config.clientUrl}/auth/verify-email?verification=${token}`
 
   const textBody = `
     Hi ${user.firstName} ${user.lastName},
@@ -150,7 +150,7 @@ export const sendVerificationEmail = async (user: { email: string; firstName: st
 
 export const sendPasswordResetEmail = async (email: string, token: string) => {
   const subject = 'Password Reset Request'
-  const resetLink = `${config.clientUrl}/reset-password?token=${token}`
+  const resetLink = `${config.clientUrl}/auth/reset-password?verification=${token}`
   const expirationMinutes = 60
 
   const textBody = `
