@@ -225,7 +225,7 @@ router.post('/verifications/new', authController.sendVerificationLink)
  * /auth/reset-password:
  *   post:
  *     summary: Reset user password
- *     description: Authenticated user can reset their password.
+ *     description: Authenticated user can reset their password. Use `/forgot-password` to get magic login link before this
  *     tags:
  *       - Auth
  *     security:

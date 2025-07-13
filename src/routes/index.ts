@@ -10,7 +10,7 @@ import swaggerConfig from '../configs/swagger'
 
 const router = express.Router()
 
-router.get('/', (req: Request, res: Response) => {
+router.get('/', (_req: Request, res: Response) => {
   res.status(200).json({ message: 'Hello, World!' })
 })
 

@@ -105,8 +105,6 @@ const options = {
     definition: openApiDoc,
     apis: [
         'src/routes/*.ts',
-        'src/controllers/*.ts',
-        // ...other paths to scan for JSDoc comments
     ],
 };
 const swaggerSpec = swaggerJsdoc(options);

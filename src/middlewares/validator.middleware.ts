@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
 import { ZodSchema } from 'zod'
-import { AppError } from '../util/error'
 import { verifyToken } from '../util/token'
 
 /**
@@ -8,13 +7,13 @@ import { verifyToken } from '../util/token'
  * @param schema - Zod schema to validate the request body
  */
 export const validateBody = (schema: ZodSchema) => {
-  return (req: Request, _res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.body)
 
     if (!result.success) {
       const firstError = result.error.errors[0]
 
-      throw new AppError(firstError.message, 400)
+      return res.status(400).json({ error: firstError.message })
     }
 
     req.body = result.data
@@ -28,7 +27,7 @@ export const validateBody = (schema: ZodSchema) => {
  * @param schema - Zod schema to validate the request query
  */
 export const validateQuery = (schema: ZodSchema) => {
-  return (req: Request, _res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     // Coerce query parameters into an object for validation
     const queryObject = req.query
 
@@ -37,7 +36,7 @@ export const validateQuery = (schema: ZodSchema) => {
     if (!result.success) {
       const firstError = result.error.errors[0]
 
-      throw new AppError(firstError.message, 400)
+      return res.status(400).json({ error: firstError.message })
     }
 
     req.query = result.data
@@ -51,13 +50,13 @@ export const validateQuery = (schema: ZodSchema) => {
  * @param schema - Zod schema to validate the request params
  */
 export const validateParams = (schema: ZodSchema) => {
-  return (req: Request, _res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.params)
 
     if (!result.success) {
       const firstError = result.error.errors[0]
 
-      throw new AppError(firstError.message, 400)
+      return res.status(400).json({ error: firstError.message })
     }
 
     req.params = result.data
@@ -67,13 +66,13 @@ export const validateParams = (schema: ZodSchema) => {
 }
 
 export const transformBody = (schema: ZodSchema) => {
-  return (req: Request, _res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.body)
 
     if (!result.success) {
       const firstError = result.error.errors[0]
 
-      throw new AppError(firstError.message, 400)
+      return res.status(400).json({ error: firstError.message })
     }
 
     req.body = result.data
@@ -83,15 +82,13 @@ export const transformBody = (schema: ZodSchema) => {
 }
 
 export const transformTokenBody = (schema: ZodSchema) => {
-  return (req: Request, _res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const { token } = req.body
     const data = verifyToken(token)
     const result = schema.safeParse(data)
 
     if (!result.success) {
-      const firstError = result.error.errors[0]
-
-      throw new AppError(firstError.message, 400)
+      return res.status(400).json({ error: "Invalid token" })
     }
 
     req.body = result.data
