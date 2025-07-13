@@ -1,65 +1,42 @@
 {
   "compilerOptions": {
-    // --- Required Core Settings ---
-
-    // Specify ECMAScript target version (compatible with your Node.js version)
-    // A modern Node.js version supports 'es2020' or later
+    
     "target": "es2020",
 
-    // Specify module code generation: CommonJS for Node.js
     "module": "commonjs",
 
-    // Redirect output structure to the directory
     "outDir": "./dist",
 
-    // Specify the root directory of input files (you already have this)
     "rootDir": "./src",
 
-    // --- Recommended for Node.js/TypeScript Interop & Robustness ---
-
-    // Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'.
     "esModuleInterop": true,
 
-    // Ensure that casing of imported filenames matches the filesystem casing.
     "forceConsistentCasingInFileNames": true,
 
-    // Enable all strict type-checking options. Recommended for better code quality.
     "strict": true,
 
-    // Skip type checking of declaration files.
     "skipLibCheck": true,
 
-    // --- Optional but often useful ---
-
-    // List of library files to be included in the compilation.
-    // Defaults based on 'target', but explicit can be clearer for Node.js.
-    "lib": ["es2020"], // Include ES features relevant to your target
-
-    // Generates corresponding '.map' file.
+    "lib": ["es2020"],
+    
     "sourceMap": true,
-
-    // Generates corresponding '.d.ts' file. Useful even for applications.
+    
     "declaration": true,
 
-    // Specify module resolution strategy: 'node' for Node.js
-    // Often default with "module": "commonjs", but good to be explicit.
     "moduleResolution": "node",
 
-    // ... leave any other options that were already uncommented here ...
+    // ... leave any other options that were already uncommented here ... // I've forgotten the rest of the options
 
   },
-  // --- Top Level Settings ---
-
-  // Specify a list of glob patterns that match files to be included in compilation.
+  
   "include": [
-    "src/**/*.ts"
-    // Add other source folders if needed, e.g., "test/**/*.ts" if you compile tests separately
+    "src/**/*.ts",
+    "tests/**/.ts"
   ],
 
-  // Specify a list of glob patterns that match files to be excluded from compilation.
   "exclude": [
     "node_modules",
-    "**/*.spec.ts", // Exclude spec/test files from the *main* build output (they might need their own tsconfig)
-    "dist"          // Exclude the output directory itself
+    "**/*.spec.ts",
+    "dist"
   ]
 }

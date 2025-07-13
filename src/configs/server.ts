@@ -9,7 +9,7 @@ import bodyParser from 'body-parser'
 import morgan from 'morgan'
 
 import config from './environment'
-import limiter from './rateLimiterConfig'
+import limiterConfig from './limiter'
 import errorHandler from '../middlewares/error.middleware'
 
 import routes from '../routes'
@@ -32,7 +32,7 @@ app.use(
 )
 
 // Rate limiting middleware
-app.use(limiter)
+app.use(limiterConfig)
 
 // Set X-DNS-Prefetch-Control: off
 app.use(dnsPrefetchControl())

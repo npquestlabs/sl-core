@@ -107,14 +107,17 @@ export const loginWithEmail = async (req: Request, res: Response) => {
 }
 
 export const sendVerificationLink = async (req: Request, res: Response) => {
-  const user = req.user
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
   const { email } = req.body
-
+  const user = await userService.getUserByEmail(email)
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' })
+  }
   const emailVerificationToken = generateToken({ email })
   await sendVerificationEmail(user, emailVerificationToken)
-  return res.status(200).json({ message: 'Verification link sent!' })
+  const result = { message: 'Verification link sent!' }
+  if (envConfig.environment !== 'production') {
+    // @ts-expect-error dynamically adding emailToken field to result
+    result.emailToken = emailVerificationToken
+  }
+  return res.status(200).json(result)
 }

@@ -218,7 +218,7 @@ router.post('/verifications/use', validateBody(TokenSchema), transformTokenBody(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/verifications/new', authenticate, authController.sendVerificationLink)
+router.post('/verifications/new', authController.sendVerificationLink)
 
 /**
  * @swagger
