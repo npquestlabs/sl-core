@@ -4,7 +4,7 @@ import * as userService from '../services/user.service'
 import { sendPasswordResetEmail, sendVerificationEmail } from '../util/email'
 import { AppError } from '../util/error'
 import { generateToken } from '../util/token'
-import sanitizedConfig from '../configs/environment'
+import envConfig from '../configs/environment'
 import { RegisterUserSchema } from '../schemas/user.schema'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
@@ -35,7 +35,7 @@ export const registerUser = async (req: Request, res: Response) => {
         'User registered successfully. Please check your email for verification link.',
     }
 
-    if (sanitizedConfig.environment !== 'production') {
+    if (envConfig.environment !== 'production') {
       // @ts-expect-error dynamically adding emailToken field to result
       result.emailToken = token
     }
@@ -80,7 +80,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
   const token = generateToken({ email })
   await sendPasswordResetEmail(email, token)
   const result = { message: 'Password reset url sent to email!' }
-  if (sanitizedConfig.environment !== 'production') {
+  if (envConfig.environment !== 'production') {
     // @ts-expect-error dynamically adding emailToken field to result
     result.emailToken = token
   }

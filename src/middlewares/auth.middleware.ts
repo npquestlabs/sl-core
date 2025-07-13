@@ -65,7 +65,7 @@ export function me(req: Request, res: Response) {
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
-    return res.status(200).json(user || null)
+    return res.status(200).json(user)
   } catch (err) {
     console.error(err)
     return res.status(401).json({ error: 'Invalid token' })

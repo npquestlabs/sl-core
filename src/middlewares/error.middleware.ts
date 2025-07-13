@@ -106,10 +106,7 @@ export default function errorHandler(
       method: req.method,
       url: req.originalUrl,
       ip: req.ip,
-      // headers: req.headers, // Be careful logging headers (sensitive info)
-      // body: req.body, // Be careful logging body (sensitive info/PII)
     },
-    // Add user info if available: req.user?.id
   })
 
   if (!res.headersSent) {

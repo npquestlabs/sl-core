@@ -77,7 +77,7 @@ const generateBaseHtml = (subject: string, contentHtml: string) => {
           ${contentHtml}
           <div class="footer">
             <p>This email was sent from ${
-              config.appName || 'your application'
+              config.appName
             }.</p>
              ${
                config.appName
@@ -121,7 +121,7 @@ export const sendVerificationEmail = async (user: { email: string; firstName: st
 
     If you did not create an account, please ignore this email.
 
-    ${config.appName || 'The App Team'}
+    ${config.appName}
   `
 
   const htmlContent = `
@@ -132,13 +132,13 @@ export const sendVerificationEmail = async (user: { email: string; firstName: st
     <p>If the button above doesn't work, you can also copy and paste this link into your web browser:</p>
     <p><a href="${verificationLink}">${verificationLink}</a></p>
     <p>If you did not create an account, please ignore this email.</p>
-    <p>Sincerely,<br>${config.appName || 'The App Team'}</p>
+    <p>Sincerely,<br>${config.appName}</p>
   `
 
   const htmlBody = generateBaseHtml(subject, htmlContent)
 
   const mailOptions: nodemailer.SendMailOptions = {
-    from: `"${config.appName || 'Your App'}" <${config.appEmail}>`,
+    from: `"${config.appName}" <${config.appEmail}>`,
     to: user.email,
     subject: subject,
     text: textBody,
@@ -166,7 +166,7 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
 
     If you did not request a password reset, please ignore this email. Your password will remain unchanged.
 
-    ${config.appName || 'The App Team'}
+    ${config.appName}
   `
 
   const htmlContent = `
@@ -178,13 +178,13 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
     <p><a href="${resetLink}">${resetLink}</a></p>
     <p class="warning">Please note: This link is valid for the next ${expirationMinutes} minutes.</p>
     <p>If you did not request a password reset, please ignore this email. Your password will remain unchanged.</p>
-    <p>Sincerely,<br>${config.appName || 'The App Team'}</p>
+    <p>Sincerely,<br>${config.appName}</p>
   `
 
   const htmlBody = generateBaseHtml(subject, htmlContent)
 
   const mailOptions: nodemailer.SendMailOptions = {
-    from: `"${config.appName || 'Your App'}" <${config.appEmail}>`,
+    from: `"${config.appName}" <${config.appEmail}>`,
     to: email,
     subject: subject,
     text: textBody,
