@@ -4,6 +4,7 @@ import path from 'path';
 import cloudinary from '../configs/cloudinary';
 import { Prisma, LeaseStatus, PaymentStatus } from '../../generated/prisma';
 import { formatDuration, intervalToDuration } from 'date-fns';
+import { logger } from '../configs/logger';
 
 
 type LeasePayloadForPDF = Prisma.LeaseGetPayload<{
@@ -92,7 +93,7 @@ const formatAdvanceDuration = (seconds: number | null | undefined): string => {
       delimiter: ', ',
     });
   } catch (error) {
-    console.error("Error formatting duration:", error);
+    logger.error("Error formatting duration:", error);
     return `${seconds} seconds (formatting error)`;
   }
 };
@@ -121,12 +122,12 @@ const savePDFAndUploadToCloudinary = async (doc: typeof PDFDocument, filename: s
     doc.end();
     writeStream.on('finish', resolve);
     writeStream.on('error', (err) => {
-      console.error("Error writing PDF to temporary file:", err);
+      logger.error("Error writing PDF to temporary file:", err);
       reject(new Error(`Failed to write PDF to temporary file: ${err.message}`));
     });
 
     doc.on('error', (err) => {
-      console.error("Error during PDF generation (piping):", err);
+      logger.error("Error during PDF generation (piping):", err);
       if (!writeStream.writableEnded) {
         writeStream.end();
       }
@@ -135,25 +136,25 @@ const savePDFAndUploadToCloudinary = async (doc: typeof PDFDocument, filename: s
   });
 
   try {
-    console.log(`Uploading ${outputPath} to Cloudinary...`);
+    logger.info(`Uploading ${outputPath} to Cloudinary...`);
     const result = await cloudinary.uploader.upload(outputPath, {
       resource_type: 'raw',
       public_id: `smart-landlord/documents/${filename.replace('.pdf', '')}`,
       overwrite: true,
     });
-    console.log(`Successfully uploaded to Cloudinary: ${result.secure_url}`);
+    logger.info(`Successfully uploaded to Cloudinary: ${result.secure_url}`);
 
     fs.unlinkSync(outputPath);
     return result.secure_url;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    console.error(`Failed to upload ${filename} to Cloudinary:`, error);
+    logger.error(`Failed to upload ${filename} to Cloudinary:`, error);
     // Ensure cleanup even if upload fails
     if (fs.existsSync(outputPath)) {
       try {
         fs.unlinkSync(outputPath);
       } catch (unlinkErr) {
-        console.error(`Failed to delete temporary file ${outputPath} after upload error:`, unlinkErr);
+        logger.error(`Failed to delete temporary file ${outputPath} after upload error:`, unlinkErr);
       }
     }
 

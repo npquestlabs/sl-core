@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { verifyToken } from '../util/token'
+import { logger } from '../configs/logger'
 
 export function authenticate(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization
@@ -14,7 +15,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
     req.user = verifyToken(token)
     next()
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(401).json({ error: 'Invalid token' })
   }
 }
@@ -67,7 +68,7 @@ export function me(req: Request, res: Response) {
     }
     return res.status(200).json(user)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(401).json({ error: 'Invalid token' })
   }
 }

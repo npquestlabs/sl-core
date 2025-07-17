@@ -197,3 +197,9 @@ export async function getUnitsOfLandlord(
 
   return { data: units, meta: { limit, page, total } }
 }
+
+export async function countUnits(where: Prisma.UnitWhereInput = {}) {
+  return prisma.unit.count({
+    where
+  })
+}

@@ -7,6 +7,7 @@ import {
 } from '../schemas/payment.schema'
 import { z } from 'zod'
 import { Prisma } from '../../generated/prisma'
+import { logger } from '../configs/logger'
 
 /**
  * Controller for POST /api/v1/payments
@@ -35,7 +36,7 @@ export const createPaymentController = async (
 
         return res.status(201).json(newPayment)
     } catch (error) {
-        console.error('Error in createPaymentController:', error)
+        logger.error('Error in createPaymentController:', error)
 
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({ error: error.message })
@@ -109,7 +110,7 @@ export const getComplexPayments = async (
 
         return res.status(200).json(payments)
     } catch (error) {
-        console.error('Error in getPropertyPaymentsController:', error)
+        logger.error('Error in getPropertyPaymentsController:', error)
 
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({ error: error.message })
@@ -176,7 +177,7 @@ export const getUnitPayments = async (
 
         return res.status(200).json(payments)
     } catch (error) {
-        console.error('Error in getUnitPaymentsController:', error)
+        logger.error('Error in getUnitPaymentsController:', error)
 
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({ error: error.message })
@@ -239,7 +240,7 @@ export const getLeasePayments = async (
 
         return res.status(200).json(payments)
     } catch (error) {
-        console.error('Error in getLeasePaymentsController:', error)
+        logger.error('Error in getLeasePaymentsController:', error)
 
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({ error: error.message })

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { User } from '../../generated/prisma'
 import { LocalUser } from '../types'
 
 export function sanitizeUser({
@@ -20,9 +18,4 @@ export function sanitizeUser({
     tenant,
     vendor,
   }
-}
-
-
-export function stripPasswordHash({ passwordHash, ...otherFields}: User & Record<string, unknown>) {
-  return otherFields;
 }

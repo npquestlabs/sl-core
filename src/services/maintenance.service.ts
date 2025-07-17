@@ -196,3 +196,9 @@ export const completeMaintenanceRequest = async (
 
   return updatedRequest;
 };
+
+export async function countMaintenances(where: Prisma.MaintenanceRequestWhereInput = {}) {
+  return prisma.maintenanceRequest.count({
+    where
+  })
+}

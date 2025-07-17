@@ -98,6 +98,11 @@ export async function getComplexesOfLandlord(
   return { data: complexes, meta: { limit, page, total } }
 }
 
+export async function countComplexes(where: Prisma.ComplexWhereInput = {}) {
+  return prisma.complex.count({
+    where
+  })
+}
 export async function deleteComplex(where: Prisma.ComplexWhereUniqueInput) {
   const deletedComplex = await prisma.complex.update({
     where,

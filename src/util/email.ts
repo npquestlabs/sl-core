@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer'
 import { AppError } from './error'
 import config from '../configs/environment'
 import emailConfig from '../configs/email'
+import { logger } from '../configs/logger'
 
 const generateBaseHtml = (subject: string, contentHtml: string) => {
   return `
@@ -97,11 +98,11 @@ const sendEmail = async (mailOptions: nodemailer.SendMailOptions) => {
   try {
     const info = await emailConfig.transporter.sendMail(mailOptions)
 
-    console.log('Message sent: %s', info.messageId)
+    logger.info('Message sent: %s', info.messageId)
 
     return { success: true, messageId: info.messageId }
   } catch (error) {
-    console.error('Error sending email:', error)
+    logger.error('Error sending email:', error)
     throw new AppError(`Failed to send email`, 500)
   }
 }

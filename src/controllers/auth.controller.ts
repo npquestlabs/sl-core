@@ -9,7 +9,7 @@ import envConfig from '../configs/environment'
 import { RegisterStageOneSchema, RegisterStageTwoSchema } from '../schemas/user.schema'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import { createOtp, getValidOtp, markOtpUsed, deleteOtpsForEmail } from '../services/otp.service'
+import { createOtp, getValidOtp, markOtpUsed } from '../services/otp.service'
 import { logger } from '../configs/logger'
 
 // Stage One: Accept email, send OTP
@@ -20,8 +20,6 @@ export const registerStageOne = async (req: Request, res: Response) => {
     if (existingUser) {
       return res.status(400).json({ error: 'Email already exists' })
     }
-    // Delete any previous OTPs for this email
-    await deleteOtpsForEmail(email)
     // Generate a 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     await Promise.all([createOtp(email, otp, 10), sendOtpEmail(email, otp)])
@@ -43,10 +41,8 @@ export const registerStageOne = async (req: Request, res: Response) => {
 export async function resendVerificationCode(req: Request, res: Response) {
   try {
     const { email } = req.body as z.infer<typeof RegisterStageOneSchema>
-    await deleteOtpsForEmail(email);
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await createOtp(email, otp);
-    await sendOtpEmail(email, otp);
+    await Promise.all([createOtp(email, otp), sendOtpEmail(email, otp)]);
     res.status(201).json({ message: 'Verification code resent to email.' });
   } catch (error) {
     if (error instanceof AppError) {

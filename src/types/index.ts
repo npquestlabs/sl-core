@@ -18,3 +18,11 @@ export type PaginatedResponse<T> = {
     total: number
   }
 }
+
+export type LandLordSummary = {
+  complexes: number; // Total complexes
+  units: number; // Total units
+  tenants: number; // Total tenants
+  payments: number; // Pending payments made
+  maintenanceRequests: number; // Pending maintenance requests
+}

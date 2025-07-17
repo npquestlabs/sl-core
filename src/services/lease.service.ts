@@ -3,7 +3,8 @@ import { AppError } from '../util/error'
 import { generateLeasePDF, generateRentCardPDF } from '../util/pdf'
 import { CreateLeaseSchema, RenewLeaseSchema } from '../schemas/lease.schema'
 import z from 'zod'
-import { LeaseStatus } from '../../generated/prisma'
+import { LeaseStatus, Prisma } from '../../generated/prisma'
+import { logger } from '../configs/logger'
 
 export const getLeaseDetailsForPdf = async (leaseId: string) => {
   const lease = await prisma.lease.findUnique({
@@ -128,7 +129,7 @@ export const createLease = async (
     documentUrl = await generateLeasePDF(fullLeaseDetails)
     rentCardUrl = await generateRentCardPDF(fullLeaseDetails)
   } catch (pdfError) {
-    console.error(`Failed to generate PDFs for Lease ID ${lease.id}:`, pdfError)
+    logger.error(`Failed to generate PDFs for Lease ID ${lease.id}:`, pdfError)
   }
 
   const updatedLease = await prisma.lease.update({
@@ -206,7 +207,7 @@ export const renewLease = async (
     documentUrl = await generateLeasePDF(fullLeaseDetails)
     rentCardUrl = await generateRentCardPDF(fullLeaseDetails)
   } catch (pdfError) {
-    console.error(
+    logger.error(
       `Failed to generate PDFs for Renewed Lease ID ${newLease.id}:`,
       pdfError,
     )
@@ -249,6 +250,12 @@ export const listLeases = async (landlordId: string) => {
   })
 
   return leases
+}
+
+export async function countLeases(where: Prisma.LeaseWhereInput = {}) {
+  return prisma.lease.count({
+    where
+  })
 }
 
 export const terminateLease = async (leaseId: string, landlordId: string) => {

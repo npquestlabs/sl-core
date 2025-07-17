@@ -40,4 +40,35 @@ router.use(expect(['Landlord']))
  */
 router.patch('/me', validateBody(UpdateLandlordSchema), landlordController.updateLandlord)
 
+/**
+ * @swagger
+ * /landlord/summary:
+ *   get:
+ *     summary: Get landlord summary counts
+ *     description: Returns counts for units, complexes, active leases, active maintenance requests, and upcoming payments for the authenticated landlord.
+ *     tags:
+ *       - Landlord
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Summary counts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 units:
+ *                   type: integer
+ *                 complexes:
+ *                   type: integer
+ *                 leases:
+ *                   type: integer
+ *                 maintenances:
+ *                   type: integer
+ *                 payments:
+ *                   type: integer
+ */
+router.get('/summary', landlordController.getLandlordSummary)
+
 export default router

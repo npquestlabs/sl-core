@@ -6,6 +6,7 @@ import { Prisma } from '../../generated/prisma'
 import { z } from 'zod'
 import { PaginationSchema } from '../schemas/extras.schema'
 import { PaginatedResponse } from '../types'
+import { logger } from '../configs/logger'
 
 /**
  * Creates a new payment record and triggers receipt generation.
@@ -89,14 +90,14 @@ export const createPayment = async (
                     })
                     // later, send notification to tenant about new payment + receipt
                 } else {
-                    console.error(
+                    logger.error(
                         `Failed to generate receipt PDF for payment ${newPayment.id}`,
                     )
                     throw new Error('Failed to generate receipt PDF for payment')
                 }
             })
             .catch((pdfError) => {
-                console.error(
+                logger.error(
                     `Error generating receipt PDF for payment ${newPayment.id}:`,
                     pdfError,
                 )
@@ -115,7 +116,7 @@ export const createPayment = async (
             throw new AppError('Transaction reference already exists', 409)
         }
 
-        console.error('Error creating payment:', error)
+        logger.error('Error creating payment:', error)
         throw new AppError('Failed to record payment', 500)
     }
 }
@@ -172,4 +173,10 @@ export const getPayment = async (where: Prisma.PaymentWhereUniqueInput,
     })
 
     return payment ?? null
+}
+
+export async function countPayments(where: Prisma.PaymentWhereInput = {}) {
+  return prisma.payment.count({
+    where
+  })
 }
