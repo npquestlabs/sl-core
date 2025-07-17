@@ -68,7 +68,7 @@ export const createLease = async (
     )
   }
   const rentAmount = unit.rentAmount
-  const currency = unit.rentCurrency
+  const rentCurrency = unit.rentCurrency
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
   if (!tenant) {
@@ -112,7 +112,7 @@ export const createLease = async (
       startedAt,
       endsAt,
       rentAmount,
-      currency,
+      rentCurrency,
       advanceSeconds,
       noticePeriod,
       rules: rules ?? null,
@@ -187,7 +187,7 @@ export const renewLease = async (
       tenantId: existingLease.tenantId,
       landlordId: existingLease.landlordId,
       rentAmount: existingLease.rentAmount,
-      currency: existingLease.currency,
+      rentCurrency: existingLease.rentCurrency,
       noticePeriod: existingLease.noticePeriod,
 
       startedAt: newStartedAt,

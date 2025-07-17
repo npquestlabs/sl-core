@@ -2,50 +2,67 @@ import { Request, Response } from 'express'
 import * as authService from '../services/auth.service'
 import * as userService from '../services/user.service'
 import { sendPasswordResetEmail, sendVerificationEmail } from '../util/email'
+import { sendOtpEmail } from '../util/email'
 import { AppError } from '../util/error'
 import { generateToken } from '../util/token'
 import envConfig from '../configs/environment'
-import { RegisterUserSchema } from '../schemas/user.schema'
+import { RegisterStageOneSchema, RegisterStageTwoSchema } from '../schemas/user.schema'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
+import { createOtp, getValidOtp, markOtpUsed, deleteOtpsForEmail } from '../services/otp.service'
 
-// Intentionally made the registerUser return 201 while the verifyUser return 200
-
-export const registerUser = async (req: Request, res: Response) => {
+// Stage One: Accept email, send OTP
+export const registerStageOne = async (req: Request, res: Response) => {
   try {
-    const data = {
-      email: String(req.body.email),
-      firstName: String(req.body.firstName),
-      lastName: String(req.body.lastName),
-    }
-    const existingUser = await userService.getUserByEmail(data.email);
-
+    const { email } = req.body as z.infer<typeof RegisterStageOneSchema>
+    const existingUser = await userService.getUserByEmail(email)
     if (existingUser) {
-      return res.status(400).json({ error: "Email already exists" })
+      return res.status(400).json({ error: 'Email already exists' })
     }
-
-    const payload = req.body as z.infer<typeof RegisterUserSchema>
-    payload.password =  await bcrypt.hash(payload.password, 10)
-
-    const token = generateToken(payload, { expiresIn: '5m' })
-    await sendVerificationEmail(data, token)
-
-    const result = {
-      message:
-        'User registered successfully. Please check your email for verification link.',
-    }
-
+    // Delete any previous OTPs for this email
+    await deleteOtpsForEmail(email)
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    await createOtp(email, otp, 10)
+    await sendOtpEmail(email, otp)
+    const result = { message: 'Verification code sent to email.' }
     if (envConfig.environment !== 'production') {
-      // @ts-expect-error dynamically adding emailToken field to result
-      result.emailToken = token
+      // @ts-expect-error for dev
+      result.otp = otp
     }
-
     return res.status(201).json(result)
   } catch (error) {
     if (error instanceof AppError) {
       return res.status(error.statusCode).json({ error: error.message })
     }
     throw error
+  }
+}
+
+// Stage Two: Accept OTP and user data, create user
+export const registerStageTwo = async (req: Request, res: Response) => {
+  try {
+    const { otp, user } = req.body as z.infer<typeof RegisterStageTwoSchema>
+    // Validate OTP
+    const validOtp = await getValidOtp(user.email, otp)
+    if (!validOtp) {
+      return res.status(400).json({ error: 'Invalid or expired verification code' })
+    }
+    // Mark OTP as used
+    await markOtpUsed(validOtp.id)
+    // Hash password
+    user.password = await bcrypt.hash(user.password, 10)
+    // Create user
+    const result = await userService.createUser(user)
+    if (!result) {
+      return res.status(500).json({ error: 'Failed to add user' })
+    }
+    return res.status(200).json(result)
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.message })
+    }
+    return res.status(500).json({ error: 'Failed to add user' })
   }
 }
 

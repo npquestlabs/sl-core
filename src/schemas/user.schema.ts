@@ -30,6 +30,15 @@ export const RegisterUserSchema = z.object({
   message: 'Exactly one role is required',
 })
 
+export const RegisterStageOneSchema = z.object({
+  email: z.string().email('Invalid email address'),
+})
+
+export const RegisterStageTwoSchema = z.object({
+  otp: z.string().min(4, 'OTP must be at least 4 characters'),
+  user: RegisterUserSchema,
+})
+
 export const UpdateTenantSchema = z
   .object({
     deletedAt: z.date().optional(),

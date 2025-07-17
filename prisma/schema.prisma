@@ -182,6 +182,18 @@ model Tenant {
   @@map("tenants")
 }
 
+model Otp {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email      String   @db.VarChar(255)
+  otp        String   @db.VarChar(10)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  expiresAt  DateTime @db.Timestamptz(6)
+  used       Boolean  @default(false)
+
+  @@index([email], map: "otp_idx_email")
+  @@map("otps")
+}
+
 model Unit {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
 

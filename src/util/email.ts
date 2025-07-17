@@ -193,3 +193,31 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
 
   return sendEmail(mailOptions)
 }
+
+export const sendOtpEmail = async (email: string, otp: string) => {
+  const subject = 'Your Verification Code'
+  const expirationMinutes = 10
+  const textBody = `
+    Your verification code is: ${otp}
+
+    This code is valid for the next ${expirationMinutes} minutes.
+    If you did not request this, please ignore this email.
+    ${config.appName}
+  `
+  const htmlContent = `
+    <p>Your verification code is:</p>
+    <p style="font-size:2em; font-weight:bold; text-align:center;">${otp}</p>
+    <p>This code is valid for the next ${expirationMinutes} minutes.</p>
+    <p>If you did not request this, please ignore this email.</p>
+    <p>Sincerely,<br>${config.appName}</p>
+  `
+  const htmlBody = generateBaseHtml(subject, htmlContent)
+  const mailOptions: nodemailer.SendMailOptions = {
+    from: `"${config.appName}" <${config.appEmail}>`,
+    to: email,
+    subject: subject,
+    text: textBody,
+    html: htmlBody,
+  }
+  return sendEmail(mailOptions)
+}

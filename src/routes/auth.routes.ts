@@ -7,17 +7,19 @@ import {
   EmailSchema,
   TokenSchema,
   PasswordSchema,
-  RegisterUserSchema,
+  RegisterStageOneSchema,
+  RegisterStageTwoSchema,
 } from '../schemas/user.schema'
 
 const router = express.Router()
 
+
 /**
  * @swagger
- * /auth/register:
+ * /auth/register/stage-one:
  *   post:
- *     summary: Register a new user
- *     description: Register a new user (Tenant, Landlord, or Vendor). Only one role is allowed per registration.
+ *     summary: Start registration (send verification code)
+ *     description: Accepts email, sends a verification code (OTP) to the user's email.
  *     tags:
  *       - Auth
  *     requestBody:
@@ -25,10 +27,10 @@ const router = express.Router()
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/RegisterUser'
+ *             $ref: '#/components/schemas/RegisterStageOne'
  *     responses:
  *       201:
- *         description: User registered successfully. Verification email sent.
+ *         description: Verification code sent to email.
  *         content:
  *           application/json:
  *             schema:
@@ -36,7 +38,7 @@ const router = express.Router()
  *               properties:
  *                 message:
  *                   type: string
- *                 emailToken:
+ *                 otp:
  *                   type: string
  *                   description: Only present in non-production environments.
  *       400:
@@ -46,14 +48,14 @@ const router = express.Router()
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/register', validateBody(RegisterUserSchema), authController.registerUser)
+router.post('/register/stage-one', validateBody(RegisterStageOneSchema), authController.registerStageOne)
 
 /**
  * @swagger
- * /auth/verify:
+ * /auth/register/stage-two:
  *   post:
- *     summary: Verify a new user
- *     description: Complete registration by verifying the user with a token. The token is sent to the user's email after registration. On success, returns user and tokens.
+ *     summary: Complete registration (verify code and create user)
+ *     description: Accepts OTP and user data, verifies code, and creates the user account.
  *     tags:
  *       - Auth
  *     requestBody:
@@ -61,7 +63,7 @@ router.post('/register', validateBody(RegisterUserSchema), authController.regist
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Token'
+ *             $ref: '#/components/schemas/RegisterStageTwo'
  *     responses:
  *       200:
  *         description: User verified and created successfully. Returns user and tokens.
@@ -70,7 +72,7 @@ router.post('/register', validateBody(RegisterUserSchema), authController.regist
  *             schema:
  *               $ref: '#/components/schemas/AuthSuccessResponse'
  *       400:
- *         description: Invalid or expired token.
+ *         description: Invalid or expired verification code.
  *         content:
  *           application/json:
  *             schema:
@@ -82,7 +84,8 @@ router.post('/register', validateBody(RegisterUserSchema), authController.regist
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/verify', validateBody(TokenSchema), transformTokenBody(RegisterUserSchema), authController.verifyUser)
+router.post('/register/stage-two', validateBody(RegisterStageTwoSchema), authController.registerStageTwo)
+
 
 /**
  * @swagger
