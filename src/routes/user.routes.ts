@@ -5,7 +5,7 @@ import { validateBody } from '../middlewares/validator.middleware'
 import { UpdateUserSchema } from '../schemas/user.schema'
 
 const router = express.Router()
-router.use(authenticate)
+// router.use(authenticate) -- Problematic! Doesn't work? what exactly does router.use do?
 
 /**
  * @swagger
@@ -27,7 +27,7 @@ router.use(authenticate)
  *       401:
  *         description: Unauthorized
  */
-router.get('/me', userController.getCurrentUser)
+router.get('/me', authenticate, userController.getCurrentUser)
 
 /**
  * @swagger
@@ -57,6 +57,6 @@ router.get('/me', userController.getCurrentUser)
  *       401:
  *         description: Unauthorized
  */
-router.patch('/me', validateBody(UpdateUserSchema), userController.updateUser)
+router.patch('/me', authenticate, validateBody(UpdateUserSchema), userController.updateUser)
 
 export default router

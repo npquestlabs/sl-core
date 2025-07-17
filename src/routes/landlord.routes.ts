@@ -45,7 +45,7 @@ router.patch('/me', validateBody(UpdateLandlordSchema), landlordController.updat
  * /landlord/summary:
  *   get:
  *     summary: Get landlord summary counts
- *     description: Returns counts for units, complexes, active leases, active maintenance requests, and upcoming payments for the authenticated landlord.
+ *     description: Returns counts for units, complexes, active tenants, active maintenance requests, and upcoming payments for the authenticated landlord.
  *     tags:
  *       - Landlord
  *     security:
@@ -62,9 +62,9 @@ router.patch('/me', validateBody(UpdateLandlordSchema), landlordController.updat
  *                   type: integer
  *                 complexes:
  *                   type: integer
- *                 leases:
+ *                 tenants:
  *                   type: integer
- *                 maintenances:
+ *                 maintenanceRequests:
  *                   type: integer
  *                 payments:
  *                   type: integer
