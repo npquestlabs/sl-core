@@ -10,6 +10,7 @@ import { RegisterStageOneSchema, RegisterStageTwoSchema } from '../schemas/user.
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { createOtp, getValidOtp, markOtpUsed, deleteOtpsForEmail } from '../services/otp.service'
+import { logger } from '../configs/logger'
 
 // Stage One: Accept email, send OTP
 export const registerStageOne = async (req: Request, res: Response) => {
@@ -23,8 +24,7 @@ export const registerStageOne = async (req: Request, res: Response) => {
     await deleteOtpsForEmail(email)
     // Generate a 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
-    await createOtp(email, otp, 10)
-    await sendOtpEmail(email, otp)
+    await Promise.all([createOtp(email, otp, 10), sendOtpEmail(email, otp)])
     const result = { message: 'Verification code sent to email.' }
     if (envConfig.environment !== 'production') {
       // @ts-expect-error for dev
@@ -32,6 +32,7 @@ export const registerStageOne = async (req: Request, res: Response) => {
     }
     return res.status(201).json(result)
   } catch (error) {
+    logger.error('Error in registerStageOne:', error)
     if (error instanceof AppError) {
       return res.status(error.statusCode).json({ error: error.message })
     }
@@ -49,6 +50,7 @@ export async function resendVerificationCode(req: Request, res: Response) {
     res.status(201).json({ message: 'Verification code resent to email.' });
   } catch (error) {
     if (error instanceof AppError) {
+      logger.error('Error in resendVerificationCode:', error)
       return res.status(error.statusCode).json({ error: error.message })
     }
     throw error
@@ -71,30 +73,15 @@ export const registerStageTwo = async (req: Request, res: Response) => {
     // Create user
     const result = await userService.createUser(user)
     if (!result) {
-      return res.status(500).json({ error: 'Failed to add user' })
+      throw new AppError('Failed to add user', 500)
     }
     return res.status(200).json(result)
   } catch (error) {
     if (error instanceof AppError) {
+      logger.error('Error in registerStageTwo:', error)
       return res.status(error.statusCode).json({ error: error.message })
     }
-    return res.status(500).json({ error: 'Failed to add user' })
-  }
-}
-
-export const verifyUser = async (req: Request, res: Response) => {
-  try {
-    const result = await userService.createUser(req.body)
-    if (!result) {
-      return res.status(500).json({ error: 'Failed to add user' })
-    }
-
-    return res.status(200).json(result)
-  } catch (error) {
-    if (error instanceof AppError) {
-      return res.status(error.statusCode).json({ error: error.message })
-    }
-    return res.status(500).json({ error: 'Failed to add user' })
+    throw error
   }
 }
 
