@@ -18,6 +18,7 @@ Promise.all([connectPrisma(), connectEmail()])
 
 const server = app.listen(port, () => {
   logger.info(`Server is running on ${config.port}`)
+  logger.info(`Documentation is live on http://localhost:${config.port}/api/v1/docs`)
 })
 
 process.on('exit', () => {

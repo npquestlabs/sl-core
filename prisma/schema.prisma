@@ -91,7 +91,7 @@ model Lease {
   startedAt      DateTime     @map("started_at") @db.Timestamptz(6)
   endsAt         DateTime     @map("ends_at") @db.Timestamptz(6)
   rentAmount     Decimal      @map("rent_amount") @db.Decimal(10, 2)
-  currency       String       @default("GHS") @db.VarChar(3)
+  rentCurrency   String       @default("GHS") @db.VarChar(3)
   advanceSeconds Int?         @default(0) @map("advance_seconds")
   documentUrl    String?      @map("document_url")
   status         LeaseStatus? @default(ACTIVE)

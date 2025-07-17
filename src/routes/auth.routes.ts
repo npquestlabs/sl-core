@@ -199,7 +199,7 @@ router.post('/verifications/use', validateBody(TokenSchema), transformTokenBody(
  * /auth/verifications/new:
  *   post:
  *     summary: Send a new verification link (deprecated)
- *     description: Send a new verification link to the authenticated user. (Deprecated)
+ *     description: Send a new magic login link to the user's email. (Deprecated)
  *     tags:
  *       - Auth
  *     security:
