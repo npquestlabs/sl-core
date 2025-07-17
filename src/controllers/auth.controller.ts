@@ -39,6 +39,22 @@ export const registerStageOne = async (req: Request, res: Response) => {
   }
 }
 
+export async function resendVerificationCode(req: Request, res: Response) {
+  try {
+    const { email } = req.body as z.infer<typeof RegisterStageOneSchema>
+    await deleteOtpsForEmail(email);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await createOtp(email, otp);
+    await sendOtpEmail(email, otp);
+    res.status(201).json({ message: 'Verification code resent to email.' });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.message })
+    }
+    throw error
+  }
+}
+
 // Stage Two: Accept OTP and user data, create user
 export const registerStageTwo = async (req: Request, res: Response) => {
   try {
@@ -72,7 +88,7 @@ export const verifyUser = async (req: Request, res: Response) => {
     if (!result) {
       return res.status(500).json({ error: 'Failed to add user' })
     }
-    
+
     return res.status(200).json(result)
   } catch (error) {
     if (error instanceof AppError) {

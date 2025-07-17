@@ -86,6 +86,35 @@ router.post('/register/stage-one', validateBody(RegisterStageOneSchema), authCon
  */
 router.post('/register/stage-two', validateBody(RegisterStageTwoSchema), authController.registerStageTwo)
 
+/**
+ * @swagger
+ * /auth/register/resend-verification:
+ *   post:
+ *     summary: Resend verification code (OTP)
+ *     description: Resends a verification code (OTP) to the user's email.
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RegisterStageOne'
+ *     responses:
+ *       201:
+ *         description: Verification code resent to email.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MessageResponse'
+ *       400:
+ *         description: Validation error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/register/resend-verification', validateBody(RegisterStageOneSchema), authController.resendVerificationCode);
 
 /**
  * @swagger

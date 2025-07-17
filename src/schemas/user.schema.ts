@@ -16,9 +16,8 @@ export const RegisterArtisanSchema = z.object({
 export const RegisterUserSchema = z.object({
   firstName: z.string().optional().default(''),
   lastName: z.string().optional().default(''),
-  phone: z.string().optional().default(''),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters long'),
+  password: z.string().min(6, 'Password must be at least 6 characters long'),
   landlord: RegisterLandlordSchema.optional(),
   tenant: RegisterTenantSchema.optional(),
   vendor: RegisterArtisanSchema.optional(),
@@ -32,6 +31,7 @@ export const RegisterUserSchema = z.object({
 
 export const RegisterStageOneSchema = z.object({
   email: z.string().email('Invalid email address'),
+  user: RegisterUserSchema,
 })
 
 export const RegisterStageTwoSchema = z.object({

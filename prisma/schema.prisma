@@ -12,11 +12,11 @@ datasource db {
 model User {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
 
-  firstName    String @map("first_name") @db.VarChar(255)
-  lastName     String @map("last_name") @db.VarChar(255)
-  email        String @unique @db.VarChar(255)
-  phone        String @db.VarChar(50)
-  passwordHash String @map("password_hash")
+  firstName    String  @map("first_name") @db.VarChar(255)
+  lastName     String  @map("last_name") @db.VarChar(255)
+  email        String  @unique @db.VarChar(255)
+  phone        String? @db.VarChar(50)
+  passwordHash String  @map("password_hash")
 
   idType        IdType? @map("id_type")
   idNumber      String? @unique @map("id_number") @db.VarChar(100)
@@ -183,12 +183,12 @@ model Tenant {
 }
 
 model Otp {
-  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email      String   @db.VarChar(255)
-  otp        String   @db.VarChar(10)
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
-  expiresAt  DateTime @db.Timestamptz(6)
-  used       Boolean  @default(false)
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email     String   @db.VarChar(255)
+  otp       String   @db.VarChar(10)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  expiresAt DateTime @db.Timestamptz(6)
+  used      Boolean  @default(false)
 
   @@index([email], map: "otp_idx_email")
   @@map("otps")

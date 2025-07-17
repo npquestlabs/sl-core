@@ -1,5 +1,5 @@
 import swaggerUi from 'swagger-ui-express';
-import { RegisterUserSchema, LoginSchema, EmailSchema, TokenSchema, PasswordSchema } from '../schemas/user.schema';
+import { RegisterUserSchema, RegisterStageOneSchema, RegisterStageTwoSchema, LoginSchema, EmailSchema, TokenSchema, PasswordSchema } from '../schemas/user.schema';
 import { extendZodWithOpenApi, createDocument } from 'zod-openapi';
 import swaggerJsdoc from 'swagger-jsdoc';
 import { z } from 'zod';
@@ -8,6 +8,8 @@ extendZodWithOpenApi(z);
 
 
 RegisterUserSchema.openapi({ ref: 'RegisterUser', description: 'Register a new user (Tenant, Landlord, or Vendor)' });
+RegisterStageOneSchema.openapi({ ref: 'RegisterStageOne', description: 'Start registration by sending OTP to email' });
+RegisterStageTwoSchema.openapi({ ref: 'RegisterStageTwo', description: 'Complete registration by verifying OTP and providing user data' });
 LoginSchema.openapi({ ref: 'Login', description: 'Login with email and password' });
 EmailSchema.openapi({ ref: 'Email', description: 'Email address for verification or password reset' });
 TokenSchema.openapi({ ref: 'Token', description: 'Token for verification or authentication' });
@@ -37,6 +39,8 @@ export const openApiDoc = createDocument({
         },
         schemas: {
             RegisterUser: RegisterUserSchema,
+            RegisterStageOne: RegisterStageOneSchema,
+            RegisterStageTwo: RegisterStageTwoSchema,
             Login: LoginSchema,
             Email: EmailSchema,
             Token: TokenSchema,

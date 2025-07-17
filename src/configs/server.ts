@@ -23,11 +23,13 @@ app.use(helmet())
 app.use(compression())
 
 // CORS middleware
+const origin = process.env.ORIGINS?.split(',') || ['http://localhost:8080', 'http://localhost:5173']
+
 app.use(
   cors({
-    origin: '*',
+    origin,
     methods: ['OPTIONS', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Client'],
   }),
 )
 
