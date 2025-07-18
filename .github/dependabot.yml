@@ -1,21 +1,15 @@
 version: 2
 updates:
-  - package-ecosystem: "npm" # Specify npm for Node.js projects (Express, Prisma)
-    directory: "/" # Location of package.json and lock file (relative to repo root)
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly" # Check for updates once a week
-    # OPTIONAL: Add labels to Dependabot PRs
+      interval: 'weekly'
     labels:
-      - "dependencies"
-      - "dependabot"
-    # OPTIONAL: Assign reviewers to Dependabot PRs
+      - 'dependencies'
+      - 'dependabot'
     reviewers:
-      - "nisaacdz"
-      - "steveAzo"
-      - "ziglaCity"
-    # OPTIONAL: Limit the number of open PRs from Dependabot for npm
-    open-pull-requests-limit: 5
-    # OPTIONAL: Customize commit messages
+      - 'nisaacdz'
+    open-pull-requests-limit: 3
     commit-message:
-      prefix: "chore" # Prefix commit messages with "chore"
-      include: "scope" # Include the scope (e.g., "deps", "devDeps")
+      prefix: 'chore'
+      include: 'scope'
