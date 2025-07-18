@@ -15,6 +15,7 @@ import errorHandler from '../middlewares/error.middleware'
 import routes from '../routes'
 import envConfig from './environment'
 import { bouncer } from '../middlewares'
+import swaggerConfig from './swagger'
 
 const app = express()
 
@@ -23,6 +24,9 @@ app.use(helmet())
 
 // Compression middleware
 app.use(compression())
+
+// Documentation middleware
+app.use('/api/v1/docs', swaggerConfig.swaggerUi.serve, swaggerConfig.swaggerUi.setup(swaggerConfig.swaggerSpec))
 
 // Block requests from non-allowed origins
 app.use(bouncer)
