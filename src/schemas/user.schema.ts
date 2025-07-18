@@ -96,7 +96,7 @@ export const TokenSchema = z.object({
 })
 
 export const PasswordSchema = z.object({
-  password: z.string().min(8, 'Password must be at least 8 characters long'),
+  password: z.string().min(6, 'Password must be at least 6 characters long'),
 })
 
 export const AuthTokensSchema = z.object({

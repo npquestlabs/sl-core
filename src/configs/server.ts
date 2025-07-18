@@ -13,6 +13,8 @@ import limiterConfig from './limiter'
 import errorHandler from '../middlewares/error.middleware'
 
 import routes from '../routes'
+import envConfig from './environment'
+import { bouncer } from '../middlewares'
 
 const app = express()
 
@@ -22,12 +24,13 @@ app.use(helmet())
 // Compression middleware
 app.use(compression())
 
-// CORS middleware
-const origin = process.env.ORIGINS?.split(',') || ['http://localhost:8080', 'http://localhost:5173']
+// Block requests from non-allowed origins
+app.use(bouncer)
 
+// Add CORS headers
 app.use(
   cors({
-    origin,
+    origin: envConfig.allowedOrigins,
     methods: ['OPTIONS', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Client'],
   }),

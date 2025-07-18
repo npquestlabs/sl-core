@@ -8,10 +8,10 @@ const envConfig = envSchema.parse({
   port: process.env.PORT,
   databaseUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
-  clientUrl: process.env.CLIENT_URL,
   appEmail: process.env.APP_EMAIL,
   appEmailPassword: process.env.APP_EMAIL_PASS,
   appName: 'Smart Landlord',
+  allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') || [],
 })
 
 export default envConfig

@@ -17,10 +17,10 @@ export default z.object({
   jwtSecret: z.string({
     required_error: 'JWT SECRET is Mandatory',
   }),
-  clientUrl: z.string(),
   appEmail: z.string(),
   appEmailPassword: z.string(),
   appName: z.string({
     required_error: 'APP NAME is Mandatory',
   }),
+  allowedOrigins: z.array(z.string()).default([]),
 })

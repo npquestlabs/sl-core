@@ -94,7 +94,8 @@ export const forgotPassword = async (req: Request, res: Response) => {
     return res.status(404).json({ error: 'User not found' })
   }
   const token = generateToken({ email })
-  await sendPasswordResetEmail(email, token)
+  const origin = String(req.get("origin"));
+  await sendPasswordResetEmail(email, token, origin)
   const result = { message: 'Password reset url sent to email!' }
   if (envConfig.environment !== 'production') {
     // @ts-expect-error dynamically adding emailToken field to result
@@ -129,7 +130,8 @@ export const sendVerificationLink = async (req: Request, res: Response) => {
     return res.status(404).json({ error: 'User not found' })
   }
   const emailVerificationToken = generateToken({ email })
-  await sendVerificationEmail(user, emailVerificationToken)
+  const origin = String(req.get("origin"));
+  await sendVerificationEmail(user, emailVerificationToken, origin)
   const result = { message: 'Verification link sent!' }
   if (envConfig.environment !== 'production') {
     // @ts-expect-error dynamically adding emailToken field to result

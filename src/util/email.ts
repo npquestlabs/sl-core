@@ -77,16 +77,13 @@ const generateBaseHtml = (subject: string, contentHtml: string) => {
           <h2>${subject}</h2>
           ${contentHtml}
           <div class="footer">
-            <p>This email was sent from ${
-              config.appName
-            }.</p>
-             ${
-               config.appName
-                 ? `<p>&copy; ${new Date().getFullYear()} ${
-                     config.appName
-                   }. All rights reserved.</p>`
-                 : ''
-             }
+            <p>This email was sent from ${config.appName
+    }.</p>
+             ${config.appName
+      ? `<p>&copy; ${new Date().getFullYear()} ${config.appName
+      }. All rights reserved.</p>`
+      : ''
+    }
           </div>
         </div>
       </body>
@@ -107,9 +104,9 @@ const sendEmail = async (mailOptions: nodemailer.SendMailOptions) => {
   }
 }
 
-export const sendVerificationEmail = async (user: { email: string; firstName: string; lastName: string; }, token: string) => {
+export const sendVerificationEmail = async (user: { email: string; firstName: string; lastName: string; }, token: string, origin: string) => {
   const subject = 'Verify Your Email Address'
-  const verificationLink = `${config.clientUrl}/signup?verification=${token}`
+  const verificationLink = `${origin}/signup?verification=${token}`
 
   const textBody = `
     Hi ${user.firstName} ${user.lastName},
@@ -149,10 +146,10 @@ export const sendVerificationEmail = async (user: { email: string; firstName: st
   return sendEmail(mailOptions)
 }
 
-export const sendPasswordResetEmail = async (email: string, token: string) => {
+export const sendPasswordResetEmail = async (email: string, token: string, origin: string) => {
   const subject = 'Password Reset Request'
-  const resetLink = `${config.clientUrl}/reset-password?verification=${token}`
-  const expirationMinutes = 60
+  const resetLink = `${origin}/reset-password?verification=${token}`
+  const expirationMinutes = 10
 
   const textBody = `
     Hi there,
