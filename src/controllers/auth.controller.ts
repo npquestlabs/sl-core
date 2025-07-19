@@ -24,7 +24,7 @@ export const registerStageOne = async (req: Request, res: Response) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     await Promise.all([createOtp(email, otp, 10), sendOtpEmail(email, otp)])
     const result = { message: 'Verification code sent to email.' }
-    if (envConfig.environment !== 'production') {
+    if (!envConfig.isProduction) {
       // @ts-expect-error for dev
       result.otp = otp
     }
@@ -97,7 +97,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
   const origin = String(req.get("origin"));
   await sendPasswordResetEmail(email, token, origin)
   const result = { message: 'Password reset url sent to email!' }
-  if (envConfig.environment !== 'production') {
+  if (!envConfig.isProduction) {
     // @ts-expect-error dynamically adding emailToken field to result
     result.emailToken = token
   }
@@ -133,7 +133,7 @@ export const sendVerificationLink = async (req: Request, res: Response) => {
   const origin = String(req.get("origin"));
   await sendVerificationEmail(user, emailVerificationToken, origin)
   const result = { message: 'Verification link sent!' }
-  if (envConfig.environment !== 'production') {
+  if (!envConfig.isProduction) {
     // @ts-expect-error dynamically adding emailToken field to result
     result.emailToken = emailVerificationToken
   }

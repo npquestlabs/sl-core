@@ -1,13 +1,11 @@
 import bcrypt from 'bcryptjs'
 import { AppError, LoginError } from '../util/error'
-import { PrismaClient } from '../../generated/prisma'
 import * as userService from './user.service'
 import { sanitizeUser } from '../util'
 import { generateToken } from '../util/token'
 import config from '../configs/environment'
 import jwt from 'jsonwebtoken'
-
-const prisma = new PrismaClient()
+import { prisma } from '../configs/prisma'
 
 export const loginUser = async (email: string, password: string) => {
   const user = await prisma.user.findUnique({
@@ -21,7 +19,7 @@ export const loginUser = async (email: string, password: string) => {
 
   const sanitizedUser = sanitizeUser(user)
 
-  const options: jwt.SignOptions = { expiresIn: config.environment === 'production' ? '24h' : '24m' }
+  const options: jwt.SignOptions = { expiresIn: config.isProduction ? '24h' : '24m' }
 
   const accessToken = generateToken(sanitizedUser, options)
 

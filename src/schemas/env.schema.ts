@@ -19,8 +19,5 @@ export default z.object({
   }),
   appEmail: z.string(),
   appEmailPassword: z.string(),
-  appName: z.string({
-    required_error: 'APP NAME is Mandatory',
-  }),
   allowedOrigins: z.array(z.string()).default([]),
 })

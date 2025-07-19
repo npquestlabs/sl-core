@@ -63,7 +63,7 @@ export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
 
   const sanitizedUser = sanitizeUser(createdUser)
 
-  const options: jwt.SignOptions = { expiresIn: config.environment === 'production' ? '24h' : '24m' }
+  const options: jwt.SignOptions = { expiresIn: config.isProduction ? '24h' : '24m' }
 
   const accessToken = generateToken(sanitizedUser, options)
 
@@ -108,14 +108,23 @@ export const getUserWithPopulatedData = async (id: string) => {
     where: { id },
     omit: {
       passwordHash: true,
-      landlordId: true,
-      tenantId: true,
-      vendorId: true,
     },
     include: {
-      landlord: true,
-      tenant: true,
-      vendor: true,
+      landlord: {
+        omit: {
+          userId: true
+        }
+      },
+      tenant: {
+        omit: {
+          userId: true
+        }
+      },
+      vendor: {
+        omit: {
+          userId: true
+        }
+      },
     },
   })
 

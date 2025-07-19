@@ -29,7 +29,7 @@ app.use(compression())
 app.use('/api/v1/docs', swaggerConfig.swaggerUi.serve, swaggerConfig.swaggerUi.setup(swaggerConfig.swaggerSpec))
 
 // Block requests from non-allowed origins
-app.use(bouncer)
+if (envConfig.isProduction) app.use(bouncer)
 
 // Add CORS headers
 app.use(
