@@ -11,8 +11,8 @@ Local setup guide for the SmartLandlord backend.
 
 1.  **Clone:**
     ```bash
-    git clone https://github.com/smartLanlord/smartLandlord-backend.git
-    cd smartLandlord-backend
+    git clone https://github.com/npquestlabs/sl-core.git
+    cd sl-core
     ```
 
 2.  **Environment (.env):**
