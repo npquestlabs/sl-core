@@ -1,11 +1,17 @@
 import express from 'express'
 import * as complexController from '../controllers/complex.controller'
 import * as unitsController from '../controllers/unit.controller'
-import { validateBody, validateQuery } from '../middlewares/validator.middleware'
+import {
+  validateBody,
+  validateQuery,
+} from '../middlewares/validator.middleware'
 import { authenticate, expect } from '../middlewares/auth.middleware'
 import { PaginationSchema } from '../schemas/extras.schema'
 import { CreateUnitSchema } from '../schemas/unit.schema'
-import { CreateComplexSchema, UpdateComplexSchema } from '../schemas/complex.schema'
+import {
+  CreateComplexSchema,
+  UpdateComplexSchema,
+} from '../schemas/complex.schema'
 
 const router = express.Router()
 
@@ -42,7 +48,11 @@ router.use(expect(['Landlord']))
  *       403:
  *         description: Permission denied
  */
-router.post('/', validateBody(CreateComplexSchema), complexController.createComplex)
+router.post(
+  '/',
+  validateBody(CreateComplexSchema),
+  complexController.createComplex,
+)
 
 /**
  * @swagger
@@ -98,7 +108,11 @@ router.post('/', validateBody(CreateComplexSchema), complexController.createComp
  *       403:
  *         description: Permission denied
  */
-router.get('/', validateQuery(PaginationSchema), complexController.getLandlordComplexes)
+router.get(
+  '/',
+  validateQuery(PaginationSchema),
+  complexController.getLandlordComplexes,
+)
 
 /**
  * @swagger
@@ -172,7 +186,11 @@ router.get('/:complexId', complexController.getLandLordComplex)
  *       404:
  *         description: Complex not found
  */
-router.patch('/:complexId', validateBody(UpdateComplexSchema), complexController.updateComplex)
+router.patch(
+  '/:complexId',
+  validateBody(UpdateComplexSchema),
+  complexController.updateComplex,
+)
 
 /**
  * @swagger
@@ -269,7 +287,11 @@ router.delete('/:complexId', complexController.deleteComplex)
  *       404:
  *         description: Units not found
  */
-router.get('/:complexId/units', validateQuery(PaginationSchema), unitsController.getUnitsOfComplex)
+router.get(
+  '/:complexId/units',
+  validateQuery(PaginationSchema),
+  unitsController.getUnitsOfComplex,
+)
 
 /**
  * @swagger
@@ -310,7 +332,11 @@ router.get('/:complexId/units', validateQuery(PaginationSchema), unitsController
  *       404:
  *         description: Complex not found
  */
-router.post('/:complexId/units', validateBody(CreateUnitSchema), unitsController.createUnit)
+router.post(
+  '/:complexId/units',
+  validateBody(CreateUnitSchema),
+  unitsController.createUnit,
+)
 
 /**
  * @swagger
@@ -349,6 +375,9 @@ router.post('/:complexId/units', validateBody(CreateUnitSchema), unitsController
  *       404:
  *         description: Unit not found
  */
-router.get('/:complexId/units/:unitId', unitsController.getUnitByComplexIdAndUnitIdParams)
+router.get(
+  '/:complexId/units/:unitId',
+  unitsController.getUnitByComplexIdAndUnitIdParams,
+)
 
 export default router

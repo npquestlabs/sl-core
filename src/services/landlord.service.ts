@@ -23,12 +23,12 @@ export const getLandlordWithPopulatedUser = async (id: string) => {
       user: {
         omit: {
           password: true,
-        }
+        },
       },
     },
     omit: {
       userId: true,
-    }
+    },
   })
 
   return landlord ?? null

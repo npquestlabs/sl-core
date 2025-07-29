@@ -51,7 +51,10 @@ export async function getComplexById(complexId: string) {
   return complex
 }
 
-export async function getComplex(where: Prisma.ComplexWhereUniqueInput, include: Prisma.ComplexInclude = {}) {
+export async function getComplex(
+  where: Prisma.ComplexWhereUniqueInput,
+  include: Prisma.ComplexInclude = {},
+) {
   const complex = await prisma.complex.findUnique({
     where,
     include,
@@ -100,7 +103,7 @@ export async function getComplexesOfLandlord(
 
 export async function countComplexes(where: Prisma.ComplexWhereInput = {}) {
   return prisma.complex.count({
-    where
+    where,
   })
 }
 export async function deleteComplex(where: Prisma.ComplexWhereUniqueInput) {

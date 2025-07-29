@@ -16,12 +16,12 @@ const variables = envSchema.parse({
 const envConfig = {
   ...variables,
   appName: 'Smart Landlord',
-  isProduction: variables.environment == "production",
+  isProduction: variables.environment == 'production',
   clients: {
-    landlord: "landlord",
-    tenant: "tenant",
-    vendor: "vendor"
-  }
+    landlord: 'landlord',
+    tenant: 'tenant',
+    vendor: 'vendor',
+  },
 }
 
 export default envConfig

@@ -1,118 +1,155 @@
-import swaggerUi from 'swagger-ui-express';
-import { RegisterUserSchema, RegisterStageOneSchema, RegisterStageTwoSchema, LoginSchema, EmailSchema, TokenSchema, PasswordSchema } from '../schemas/user.schema';
-import { extendZodWithOpenApi, createDocument } from 'zod-openapi';
-import swaggerJsdoc from 'swagger-jsdoc';
-import { z } from 'zod';
+import swaggerUi from 'swagger-ui-express'
+import {
+  RegisterUserSchema,
+  RegisterStageOneSchema,
+  RegisterStageTwoSchema,
+  LoginSchema,
+  EmailSchema,
+  TokenSchema,
+  PasswordSchema,
+} from '../schemas/user.schema'
+import { extendZodWithOpenApi, createDocument } from 'zod-openapi'
+import swaggerJsdoc from 'swagger-jsdoc'
+import { z } from 'zod'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
-
-RegisterUserSchema.openapi({ ref: 'RegisterUser', description: 'Register a new user (Tenant, Landlord, or Vendor)' });
-RegisterStageOneSchema.openapi({ ref: 'RegisterStageOne', description: 'Start registration by sending OTP to email' });
-RegisterStageTwoSchema.openapi({ ref: 'RegisterStageTwo', description: 'Complete registration by verifying OTP and providing user data' });
-LoginSchema.openapi({ ref: 'Login', description: 'Login with email and password' });
-EmailSchema.openapi({ ref: 'Email', description: 'Email address for verification or password reset' });
-TokenSchema.openapi({ ref: 'Token', description: 'Token for verification or authentication' });
-PasswordSchema.openapi({ ref: 'Password', description: 'Password for reset or authentication' });
-
+RegisterUserSchema.openapi({
+  ref: 'RegisterUser',
+  description: 'Register a new user (Tenant, Landlord, or Vendor)',
+})
+RegisterStageOneSchema.openapi({
+  ref: 'RegisterStageOne',
+  description: 'Start registration by sending OTP to email',
+})
+RegisterStageTwoSchema.openapi({
+  ref: 'RegisterStageTwo',
+  description: 'Complete registration by verifying OTP and providing user data',
+})
+LoginSchema.openapi({
+  ref: 'Login',
+  description: 'Login with email and password',
+})
+EmailSchema.openapi({
+  ref: 'Email',
+  description: 'Email address for verification or password reset',
+})
+TokenSchema.openapi({
+  ref: 'Token',
+  description: 'Token for verification or authentication',
+})
+PasswordSchema.openapi({
+  ref: 'Password',
+  description: 'Password for reset or authentication',
+})
 
 export const openApiDoc = createDocument({
-    openapi: '3.0.0',
-    info: {
-        title: 'SL-Core API',
-        version: '1.0.0',
-        description: 'API documentation for SL-Core',
+  openapi: '3.0.0',
+  info: {
+    title: 'SL-Core API',
+    version: '1.0.0',
+    description: 'API documentation for SL-Core',
+  },
+  servers: [
+    {
+      url: 'http://localhost:5000',
+      description: 'Development server',
     },
-    servers: [
-        {
-            url: 'http://localhost:5000',
-            description: 'Development server',
-        },
-    ],
-    components: {
-        securitySchemes: {
-            bearerAuth: {
-                type: 'http',
-                scheme: 'bearer',
-                bearerFormat: 'JWT',
-            },
-        },
-        schemas: {
-            RegisterUser: RegisterUserSchema,
-            RegisterStageOne: RegisterStageOneSchema,
-            RegisterStageTwo: RegisterStageTwoSchema,
-            Login: LoginSchema,
-            Email: EmailSchema,
-            Token: TokenSchema,
-            Password: PasswordSchema,
-            User: {
-                type: 'object',
-                properties: {
-                    id: { type: 'string', example: 'user-uuid' },
-                    firstName: { type: 'string', example: 'John' },
-                    lastName: { type: 'string', example: 'Doe' },
-                    email: { type: 'string', format: 'email', example: 'user@example.com' },
-                    landlord: {
-                        type: 'object',
-                        nullable: true,
-                        additionalProperties: true,
-                        description: 'Landlord profile data if user is a landlord'
-                    },
-                    tenant: {
-                        type: 'object',
-                        nullable: true,
-                        additionalProperties: true,
-                        description: 'Tenant profile data if user is a tenant'
-                    },
-                    vendor: {
-                        type: 'object',
-                        nullable: true,
-                        additionalProperties: true,
-                        description: 'Vendor profile data if user is a vendor'
-                    }
-                },
-                required: ['id', 'firstName', 'lastName', 'email', 'landlord', 'tenant', 'vendor']
-            },
-            AuthSuccessResponse: {
-                type: 'object',
-                properties: {
-                    user: { $ref: '#/components/schemas/User' },
-                    tokens: {
-                        type: 'object',
-                        properties: {
-                            access: { type: 'string', example: 'jwt-access-token' }
-                        },
-                        required: ['access']
-                    }
-                },
-                required: ['user', 'tokens']
-            },
-            MessageResponse: {
-                type: 'object',
-                properties: {
-                    message: { type: 'string', example: 'Operation successful' }
-                },
-                required: ['message']
-            },
-            ErrorResponse: {
-                type: 'object',
-                properties: {
-                    error: { type: 'string', example: 'Error message' }
-                },
-                required: ['error']
-            },
-        },
+  ],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
     },
-});
+    schemas: {
+      RegisterUser: RegisterUserSchema,
+      RegisterStageOne: RegisterStageOneSchema,
+      RegisterStageTwo: RegisterStageTwoSchema,
+      Login: LoginSchema,
+      Email: EmailSchema,
+      Token: TokenSchema,
+      Password: PasswordSchema,
+      User: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', example: 'user-uuid' },
+          firstName: { type: 'string', example: 'John' },
+          lastName: { type: 'string', example: 'Doe' },
+          email: {
+            type: 'string',
+            format: 'email',
+            example: 'user@example.com',
+          },
+          landlord: {
+            type: 'object',
+            nullable: true,
+            additionalProperties: true,
+            description: 'Landlord profile data if user is a landlord',
+          },
+          tenant: {
+            type: 'object',
+            nullable: true,
+            additionalProperties: true,
+            description: 'Tenant profile data if user is a tenant',
+          },
+          vendor: {
+            type: 'object',
+            nullable: true,
+            additionalProperties: true,
+            description: 'Vendor profile data if user is a vendor',
+          },
+        },
+        required: [
+          'id',
+          'firstName',
+          'lastName',
+          'email',
+          'landlord',
+          'tenant',
+          'vendor',
+        ],
+      },
+      AuthSuccessResponse: {
+        type: 'object',
+        properties: {
+          user: { $ref: '#/components/schemas/User' },
+          tokens: {
+            type: 'object',
+            properties: {
+              access: { type: 'string', example: 'jwt-access-token' },
+            },
+            required: ['access'],
+          },
+        },
+        required: ['user', 'tokens'],
+      },
+      MessageResponse: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', example: 'Operation successful' },
+        },
+        required: ['message'],
+      },
+      ErrorResponse: {
+        type: 'object',
+        properties: {
+          error: { type: 'string', example: 'Error message' },
+        },
+        required: ['error'],
+      },
+    },
+  },
+})
 
 const options = {
-    definition: openApiDoc,
-    apis: [
-        'src/routes/*.ts',
-    ],
-};
-const swaggerSpec = swaggerJsdoc(options);
+  definition: openApiDoc,
+  apis: ['src/routes/*.ts'],
+}
+const swaggerSpec = swaggerJsdoc(options)
 
-const swaggerConfig = { swaggerSpec, swaggerUi };
+const swaggerConfig = { swaggerSpec, swaggerUi }
 
-export default swaggerConfig;
+export default swaggerConfig

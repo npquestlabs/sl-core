@@ -13,13 +13,18 @@ export const loginUser = async (email: string, password: string) => {
     include: { landlord: true, tenant: true, vendor: true },
   })
 
-  if (!user || !(user.password && await bcrypt.compare(password, user.password))) {
+  if (
+    !user ||
+    !(user.password && (await bcrypt.compare(password, user.password)))
+  ) {
     throw new LoginError()
   }
 
   const sanitizedUser = sanitizeUser(user)
 
-  const options: jwt.SignOptions = { expiresIn: config.isProduction ? '24h' : '24m' }
+  const options: jwt.SignOptions = {
+    expiresIn: config.isProduction ? '24h' : '24m',
+  }
 
   const accessToken = generateToken(sanitizedUser, options)
 

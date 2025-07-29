@@ -116,7 +116,10 @@ export const downloadLeaseDocumentController = async (
 
   if (!lease) throw new AppError('Lease not found', 404)
 
-  if (lease.landlord.id !== user.landlord?.id && lease.tenant.id !== user.tenant?.id) {
+  if (
+    lease.landlord.id !== user.landlord?.id &&
+    lease.tenant.id !== user.tenant?.id
+  ) {
     throw new AppError('Unauthorized to access this document', 403)
   }
 
@@ -144,7 +147,6 @@ export const getLeaseDetailsController = async (
   if (!user.landlord && !user.tenant) {
     throw new AppError('User is not a landlord or tenant', 403)
   }
-
 
   const leaseId = req.params.leaseId
 
@@ -174,7 +176,10 @@ export const getLeaseDetailsController = async (
   }
 
   // Check if user is either landlord or tenant
-  if (lease.landlord.id !== user.landlord?.id && lease.tenant.id !== user.tenant?.id) {
+  if (
+    lease.landlord.id !== user.landlord?.id &&
+    lease.tenant.id !== user.tenant?.id
+  ) {
     throw new AppError('Unauthorized to access this lease', 403)
   }
 

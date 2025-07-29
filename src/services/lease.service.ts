@@ -254,7 +254,7 @@ export const listLeases = async (landlordId: string) => {
 
 export async function countLeases(where: Prisma.LeaseWhereInput = {}) {
   return prisma.lease.count({
-    where
+    where,
   })
 }
 
@@ -303,4 +303,3 @@ export const terminateLease = async (leaseId: string, landlordId: string) => {
 
   return updatedLease
 }
-

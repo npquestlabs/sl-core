@@ -88,7 +88,7 @@ export const transformTokenBody = (schema: ZodSchema) => {
     const result = schema.safeParse(data)
 
     if (!result.success) {
-      return res.status(400).json({ error: "Invalid token" })
+      return res.status(400).json({ error: 'Invalid token' })
     }
 
     req.body = result.data
