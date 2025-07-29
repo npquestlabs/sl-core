@@ -59,3 +59,21 @@ export const getLandlordSummary = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch summary' })
   }
 }
+
+export const getCurrentUser = async (req: Request, res: Response) => {
+  try {
+    const user = req.user
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthenticated' })
+    }
+    if (!user.landlord?.id) {
+      return res.status(403).json({ error: 'Unauthorized' })
+    }
+    const landlord = await landlordService.getLandlordWithPopulatedUser(String(user.landlord.id))
+    res.status(200).json(landlord)
+  } catch (error) {
+    logger.error(error)
+    res.status(500).json({ error: 'Failed to get current user' })
+  }
+}

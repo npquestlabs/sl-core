@@ -10,16 +10,12 @@ import config from '../configs/environment'
 import jwt from 'jsonwebtoken'
 
 export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
-  const { password, landlord, tenant, vendor, ...userData } = data
-
-  const createUserInput = {
-    ...userData,
-    passwordHash: password, // Already hashed
-  }
+  data.password = await bcrypt.hash(data.password, 10)
+  const { landlord, tenant, vendor, ...userData } = data
 
   const createdUser = await prisma.user.create({
     data: {
-      ...createUserInput,
+      ...userData,
 
       landlord: {
         ...(landlord && {
@@ -44,11 +40,7 @@ export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
       },
     },
     omit: {
-      passwordHash: true,
-      idType: true,
-      idNumber: true,
-      idDocumentUrl: true,
-      phone: true,
+      password: true,
     },
     include: {
       landlord: true,
@@ -70,18 +62,6 @@ export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
   return { user: sanitizedUser, tokens: { access: accessToken } }
 }
 
-export const isUnusedEmail = async (email: string) => {
-  const user = await prisma.user.findUnique({
-    where: { email },
-  })
-
-  if (user) {
-    throw new AppError('Email already in use', 400)
-  }
-
-  return true
-}
-
 export const updateUser = async (
   id: string,
   data: z.infer<typeof UpdateUserSchema>,
@@ -92,11 +72,7 @@ export const updateUser = async (
       ...data,
     },
     omit: {
-      passwordHash: true,
-      idType: true,
-      idNumber: true,
-      idDocumentUrl: true,
-      phone: true,
+      password: true,
     },
   })
 
@@ -107,7 +83,7 @@ export const getUserWithPopulatedData = async (id: string) => {
   const user = await prisma.user.findUnique({
     where: { id },
     omit: {
-      passwordHash: true,
+      password: true,
     },
     include: {
       landlord: {
@@ -128,26 +104,18 @@ export const getUserWithPopulatedData = async (id: string) => {
     },
   })
 
-  if (!user) {
-    throw new AppError('User not found', 404)
-  }
-
-  return user
+  return user ?? null
 }
 
 export const getUserById = async (id: string) => {
   const user = await prisma.user.findUnique({
     where: { id },
     omit: {
-      passwordHash: true,
+      password: true,
     },
   })
 
-  if (!user) {
-    throw new AppError('User not found', 404)
-  }
-
-  return user
+  return user ?? null
 }
 
 export const getUserByEmail = async (
@@ -159,7 +127,7 @@ export const getUserByEmail = async (
     where: { email },
     omit: {
       ...omit,
-      passwordHash: true,
+      password: true,
     },
     include,
   })
@@ -177,26 +145,22 @@ export const updateUserPassword = async (userId: string, password: string) => {
       throw new AppError('User not found', 404)
     }
 
-    if (await bcrypt.compare(password, user.passwordHash)) {
+    if (user.password && await bcrypt.compare(password, user.password)) {
       throw new AppError(
         'New password cannot be the same as the old password',
         400,
       )
     }
 
-    const passwordHash = await bcrypt.hash(password, 10)
+    password = await bcrypt.hash(password, 10)
 
     const updated = await tx.user.update({
       where: { id: userId },
       data: {
-        passwordHash,
+        password,
       },
       omit: {
-        passwordHash: true,
-        idType: true,
-        idNumber: true,
-        idDocumentUrl: true,
-        phone: true,
+        password: true,
       },
     })
 

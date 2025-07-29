@@ -217,9 +217,9 @@ export const generateLeasePDF = async (lease: LeasePayloadForPDF): Promise<strin
   doc.fontSize(14).text('Landlord Details', { underline: true });
   doc.fontSize(12);
   if (lease.landlord?.user) {
-    doc.text(getText(`${lease.landlord.user.firstName} ${lease.landlord.user.lastName}`, 'Name: '));
+    doc.text(getText(`${lease.landlord.firstName} ${lease.landlord.lastName}`, 'Name: '));
     doc.text(getText(lease.landlord.user.email, 'Email: '));
-    doc.text(getText(lease.landlord.user.phone, 'Phone: '));
+    doc.text(getText(lease.landlord.phone, 'Phone: '));
   } else {
     doc.text('Landlord details not available.');
   }
@@ -228,9 +228,9 @@ export const generateLeasePDF = async (lease: LeasePayloadForPDF): Promise<strin
   doc.fontSize(14).text('Tenant Details', { underline: true });
   doc.fontSize(12);
   if (lease.tenant?.user) {
-    doc.text(getText(`${lease.tenant.user.firstName} ${lease.tenant.user.lastName}`, 'Name: '));
-    doc.text(getText(lease.tenant.user.email, 'Email: '));
-    doc.text(getText(lease.tenant.user.phone, 'Phone: '));
+    doc.text(getText(`${lease.tenant.firstName} ${lease.tenant.lastName}`, 'Name: '));
+    doc.text(getText(lease.tenant.email, 'Email: '));
+    doc.text(getText(lease.tenant.phone, 'Phone: '));
   } else {
     doc.text('Tenant details not available.');
   }
@@ -290,8 +290,8 @@ export const generateRentCardPDF = async (lease: RentCardPayload): Promise<strin
 
   doc.fontSize(12);
 
-  const landlordName = lease.landlord?.user ? `${lease.landlord.user.firstName} ${lease.landlord.user.lastName}` : 'N/A';
-  const tenantName = lease.tenant?.user ? `${lease.tenant.user.firstName} ${lease.tenant.user.lastName}` : 'N/A';
+  const landlordName = lease.landlord?.user ? `${lease.landlord.firstName} ${lease.landlord.lastName}` : 'N/A';
+  const tenantName = lease.tenant?.user ? `${lease.tenant.firstName} ${lease.tenant.lastName}` : 'N/A';
   const propertyAddress = lease.unit?.complex?.address || 'N/A';
 
   doc.text(`Landlord Name: ${landlordName}`);
@@ -333,10 +333,10 @@ export const generateReceiptPDF = async (payment: PaymentPayloadForPDF): Promise
   doc.moveDown(2);
 
   doc.fontSize(12);
-  const tenantName = payment.lease?.tenant?.user ? `${payment.lease.tenant.user.firstName} ${payment.lease.tenant.user.lastName}` : 'N/A';
+  const tenantName = payment.lease?.tenant?.user ? `${payment.lease.tenant.firstName} ${payment.lease.tenant.lastName}` : 'N/A';
   const propertyAddress = payment.lease?.unit?.complex?.address || 'N/A';
   const unitLabel = payment.lease?.unit?.label || 'N/A';
-
+  
   doc.text(`Tenant Name: ${tenantName}`);
   doc.text(`Property Address: ${propertyAddress}`);
   doc.text(`Unit Label/Number: ${unitLabel}`);

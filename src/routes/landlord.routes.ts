@@ -42,6 +42,30 @@ router.patch('/me', validateBody(UpdateLandlordSchema), landlordController.updat
 
 /**
  * @swagger
+ * /landlord/me:
+ *   get:
+ *     summary: Get current landlord user
+ *     description: Returns the currently authenticated landlord user.
+ *     tags:
+ *       - Landlord
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current landlord user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Landlord'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Permission denied
+ */
+router.get('/me', landlordController.getCurrentUser)
+
+/**
+ * @swagger
  * /landlord/summary:
  *   get:
  *     summary: Get landlord summary counts

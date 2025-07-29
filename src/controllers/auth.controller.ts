@@ -6,9 +6,11 @@ import { sendOtpEmail } from '../util/email'
 import { AppError } from '../util/error'
 import { generateToken } from '../util/token'
 import envConfig from '../configs/environment'
-import { RegisterStageOneSchema, RegisterStageTwoSchema } from '../schemas/user.schema'
+import {
+  RegisterStageOneSchema,
+  RegisterStageTwoSchema,
+} from '../schemas/user.schema'
 import { z } from 'zod'
-import bcrypt from 'bcryptjs'
 import { createOtp, getValidOtp, markOtpUsed } from '../services/otp.service'
 import { logger } from '../configs/logger'
 
@@ -41,9 +43,9 @@ export const registerStageOne = async (req: Request, res: Response) => {
 export async function resendVerificationCode(req: Request, res: Response) {
   try {
     const { email } = req.body as z.infer<typeof RegisterStageOneSchema>
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await Promise.all([createOtp(email, otp), sendOtpEmail(email, otp)]);
-    res.status(201).json({ message: 'Verification code resent to email.' });
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    await Promise.all([createOtp(email, otp), sendOtpEmail(email, otp)])
+    res.status(201).json({ message: 'Verification code resent to email.' })
   } catch (error) {
     if (error instanceof AppError) {
       logger.error('Error in resendVerificationCode:', error)
@@ -60,12 +62,12 @@ export const registerStageTwo = async (req: Request, res: Response) => {
     // Validate OTP
     const validOtp = await getValidOtp(user.email, otp)
     if (!validOtp) {
-      return res.status(400).json({ error: 'Invalid or expired verification code' })
+      return res
+        .status(400)
+        .json({ error: 'Invalid or expired verification code' })
     }
     // Mark OTP as used
     await markOtpUsed(validOtp.id)
-    // Hash password
-    user.password = await bcrypt.hash(user.password, 10)
     // Create user
     const result = await userService.createUser(user)
     if (!result) {
@@ -94,7 +96,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     return res.status(404).json({ error: 'User not found' })
   }
   const token = generateToken({ email })
-  const origin = String(req.get("origin"));
+  const origin = String(req.get('origin'))
   await sendPasswordResetEmail(email, token, origin)
   const result = { message: 'Password reset url sent to email!' }
   if (!envConfig.isProduction) {
@@ -129,9 +131,24 @@ export const sendVerificationLink = async (req: Request, res: Response) => {
   if (!user) {
     return res.status(404).json({ error: 'User not found' })
   }
+  if (!user.landlord && !user.tenant && !user.vendor) {
+    return res.status(403).json({ error: 'Contact support' })
+  }
+
   const emailVerificationToken = generateToken({ email })
-  const origin = String(req.get("origin"));
-  await sendVerificationEmail(user, emailVerificationToken, origin)
+  const origin = String(req.get('origin'))
+  await sendVerificationEmail(
+    user.email,
+    user.landlord
+      ? user.landlord
+      : user.tenant
+        ? user.tenant
+        : user.vendor
+          ? user.vendor
+          : { firstName: '', lastName: '' },
+    emailVerificationToken,
+    origin,
+  )
   const result = { message: 'Verification link sent!' }
   if (!envConfig.isProduction) {
     // @ts-expect-error dynamically adding emailToken field to result

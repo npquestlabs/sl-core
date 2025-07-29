@@ -13,7 +13,7 @@ export const loginUser = async (email: string, password: string) => {
     include: { landlord: true, tenant: true, vendor: true },
   })
 
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+  if (!user || !(user.password && await bcrypt.compare(password, user.password))) {
     throw new LoginError()
   }
 
@@ -28,11 +28,7 @@ export const loginUser = async (email: string, password: string) => {
 
 export const loginWithEmail = async (email: string) => {
   const omit = {
-    passwordHash: true,
-    idType: true,
-    idNumber: true,
-    idDocumentUrl: true,
-    phone: true,
+    password: true,
   }
   const include = {
     landlord: true,
@@ -46,7 +42,7 @@ export const loginWithEmail = async (email: string) => {
 
   const sanitizedUser = sanitizeUser(user)
 
-  const options: jwt.SignOptions = { expiresIn: '12m' }
+  const options: jwt.SignOptions = { expiresIn: '24m' }
 
   const accessToken = generateToken(sanitizedUser, options)
 

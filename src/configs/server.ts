@@ -31,6 +31,8 @@ app.use('/api/v1/docs', swaggerConfig.swaggerUi.serve, swaggerConfig.swaggerUi.s
 // Block requests from non-allowed origins
 if (envConfig.isProduction) app.use(bouncer)
 
+console.log(`Allowed Origins: ${envConfig.allowedOrigins}`)
+
 // Add CORS headers
 app.use(
   cors({

@@ -19,5 +19,7 @@ export default z.object({
   }),
   appEmail: z.string(),
   appEmailPassword: z.string(),
-  allowedOrigins: z.array(z.string()).default([]),
+  allowedOrigins: z.array(z.string(), {
+    required_error: 'ALLOWED_ORIGINS is Mandatory',
+  }),
 })

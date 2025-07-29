@@ -3,8 +3,6 @@ import { LocalUser } from '../types'
 export function sanitizeUser({
   id,
   email,
-  firstName,
-  lastName,
   landlord,
   tenant,
   vendor,
@@ -12,8 +10,6 @@ export function sanitizeUser({
   return {
     id,
     email,
-    firstName,
-    lastName,
     landlord,
     tenant,
     vendor,

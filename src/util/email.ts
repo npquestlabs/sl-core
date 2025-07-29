@@ -104,7 +104,7 @@ const sendEmail = async (mailOptions: nodemailer.SendMailOptions) => {
   }
 }
 
-export const sendVerificationEmail = async (user: { email: string; firstName: string; lastName: string; }, token: string, origin: string) => {
+export const sendVerificationEmail = async (email: string, user: { firstName: string, lastName: string }, token: string, origin: string) => {
   const subject = 'Verify Your Email Address'
   const verificationLink = `${origin}/signup?verification=${token}`
 
@@ -137,7 +137,7 @@ export const sendVerificationEmail = async (user: { email: string; firstName: st
 
   const mailOptions: nodemailer.SendMailOptions = {
     from: `"${config.appName}" <${config.appEmail}>`,
-    to: user.email,
+    to: email,
     subject: subject,
     text: textBody,
     html: htmlBody,
