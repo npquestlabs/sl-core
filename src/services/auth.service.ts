@@ -1,13 +1,11 @@
 import bcrypt from 'bcryptjs'
 import { AppError, LoginError } from '../util/error'
-import { PrismaClient } from '../../generated/prisma'
 import * as userService from './user.service'
 import { sanitizeUser } from '../util'
 import { generateToken } from '../util/token'
 import config from '../configs/environment'
 import jwt from 'jsonwebtoken'
-
-const prisma = new PrismaClient()
+import { prisma } from '../configs/prisma'
 
 export const loginUser = async (email: string, password: string) => {
   const user = await prisma.user.findUnique({
@@ -15,13 +13,13 @@ export const loginUser = async (email: string, password: string) => {
     include: { landlord: true, tenant: true, vendor: true },
   })
 
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+  if (!user || !(user.password && await bcrypt.compare(password, user.password))) {
     throw new LoginError()
   }
 
   const sanitizedUser = sanitizeUser(user)
 
-  const options: jwt.SignOptions = { expiresIn: config.environment === 'production' ? '24h' : '24m' }
+  const options: jwt.SignOptions = { expiresIn: config.isProduction ? '24h' : '24m' }
 
   const accessToken = generateToken(sanitizedUser, options)
 
@@ -30,11 +28,7 @@ export const loginUser = async (email: string, password: string) => {
 
 export const loginWithEmail = async (email: string) => {
   const omit = {
-    passwordHash: true,
-    idType: true,
-    idNumber: true,
-    idDocumentUrl: true,
-    phone: true,
+    password: true,
   }
   const include = {
     landlord: true,
@@ -48,7 +42,7 @@ export const loginWithEmail = async (email: string) => {
 
   const sanitizedUser = sanitizeUser(user)
 
-  const options: jwt.SignOptions = { expiresIn: '12m' }
+  const options: jwt.SignOptions = { expiresIn: '24m' }
 
   const accessToken = generateToken(sanitizedUser, options)
 

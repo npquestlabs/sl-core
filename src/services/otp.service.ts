@@ -1,7 +1,5 @@
-import { PrismaClient } from "../../generated/prisma"
 import { addMinutes } from 'date-fns'
-
-const prisma = new PrismaClient()
+import { prisma } from '../configs/prisma'
 
 export async function createOtp(email: string, otp: string, expiresInMinutes = 10) {
     deleteOtpsForEmail(email)

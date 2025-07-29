@@ -15,3 +15,21 @@ export const updateLandlord = async (
 
   return landlord ?? null
 }
+
+export const getLandlordWithPopulatedUser = async (id: string) => {
+  const landlord = await prisma.landlord.findUnique({
+    where: { id },
+    include: {
+      user: {
+        omit: {
+          password: true,
+        }
+      },
+    },
+    omit: {
+      userId: true,
+    }
+  })
+
+  return landlord ?? null
+}

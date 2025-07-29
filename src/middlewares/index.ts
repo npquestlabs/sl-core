@@ -3,10 +3,13 @@ import { logger } from '../configs/logger'
 import envConfig from '../configs/environment'
 
 export function bouncer(req: Request, res: Response, next: NextFunction) {
-    const permitted = envConfig.allowedOrigins.includes(req.get('origin') || 'not-set')
+    const origin = req.get('origin') || 'not-set'
+    const client = req.headers["x-client"] || 'not-set'
+    const permittedOrigin = envConfig.allowedOrigins.includes(origin)
+    const permittedClient = typeof client == "string" && client in envConfig.clients
 
-    if (!permitted) {
-        logger.warn(`Blocked request from origin: ${req.get('origin')}`)
+    if (!permittedOrigin || !permittedClient) {
+        logger.warn(`Blocked request with client: ${client} from origin: ${origin}`)
         return res.status(403).json({ error: 'Permission denied' })
     }
 

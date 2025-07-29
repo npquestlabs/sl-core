@@ -12,32 +12,16 @@ datasource db {
 model User {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
 
-  firstName    String  @map("first_name") @db.VarChar(255)
-  lastName     String  @map("last_name") @db.VarChar(255)
-  email        String  @unique @db.VarChar(255)
-  phone        String? @db.VarChar(50)
-  passwordHash String  @map("password_hash")
+  email     String  @unique @db.VarChar(255)
+  password  String? @map("password_hash")
+  avatarUrl String? @map("avatar_url")
 
-  idType        IdType? @map("id_type")
-  idNumber      String? @unique @map("id_number") @db.VarChar(100)
-  idDocumentUrl String? @map("id_document_url")
-
-  landlordId String? @unique @map("landlord_id") @db.Uuid
-  tenantId   String? @unique @map("tenant_id") @db.Uuid
-  vendorId   String? @unique @map("vendor_id") @db.Uuid
-
-  notificationPrefs Json? @map("notification_prefs")
-
-  landlord Landlord? @relation(fields: [landlordId], references: [id])
-  tenant   Tenant?   @relation(fields: [tenantId], references: [id])
-  vendor   Vendor?   @relation(fields: [vendorId], references: [id])
-
-  notifications       Notification[]
   maintenanceRequests MaintenanceRequest[]
 
-  @@index([landlordId], map: "users_idx_landlord_id")
-  @@index([tenantId], map: "users_idx_tenant_id")
-  @@index([vendorId], map: "users_idx_vendor_id")
+  landlord Landlord?
+  tenant   Tenant?
+  vendor   Vendor?
+
   @@index([email], map: "users_idx_email")
   @@map("users")
 }
@@ -62,24 +46,6 @@ model Complex {
 
   @@index([landlordId], map: "complexes_idx_landlord_id")
   @@map("complexes")
-}
-
-model Landlord {
-  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-
-  proofOfOwnership  String?   @map("proof_of_ownership")
-  bankName          String?   @map("bank_name") @db.VarChar(100)
-  bankAccount       String?   @map("bank_account") @db.VarChar(100)
-  mobileMoneyNumber String?   @map("mobile_money_number") @db.VarChar(50)
-  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  user      User?
-  complexes Complex[]
-  leases    Lease[]
-
-  @@map("landlords")
 }
 
 model Lease {
@@ -169,17 +135,73 @@ model Payment {
   @@map("payments")
 }
 
+model Landlord {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  firstName  String  @map("first_name") @db.VarChar(255)
+  lastName   String  @map("last_name") @db.VarChar(255)
+  middleName String? @map("middle_name") @db.VarChar(255)
+  phone      String? @db.VarChar(50)
+
+  proofOfOwnership  String?   @map("proof_of_ownership")
+  bankName          String?   @map("bank_name") @db.VarChar(100)
+  bankAccount       String?   @map("bank_account") @db.VarChar(100)
+  mobileMoneyNumber String?   @map("mobile_money_number") @db.VarChar(50)
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  userId String @unique @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  complexes Complex[]
+  leases    Lease[]
+
+  @@map("landlords")
+}
+
 model Tenant {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  firstName  String  @map("first_name") @db.VarChar(255)
+  lastName   String  @map("last_name") @db.VarChar(255)
+  middleName String? @map("middle_name") @db.VarChar(255)
+  phone      String? @db.VarChar(50)
+  email      String? @db.VarChar(50)
 
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  user   User?
+  userId String? @unique @map("user_id") @db.Uuid
+
+  user   User?   @relation(fields: [userId], references: [id])
   leases Lease[]
 
   @@map("tenants")
+}
+
+model Vendor {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  firstName  String  @map("first_name") @db.VarChar(255)
+  lastName   String  @map("last_name") @db.VarChar(255)
+  middleName String? @map("middle_name") @db.VarChar(255)
+  phone      String? @db.VarChar(50)
+  email      String? @db.VarChar(50)
+
+  specialty String?   @db.VarChar(255)
+  rating    Float?    @default(0.0)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  userId String? @unique @map("user_id") @db.Uuid
+
+  user                User?                @relation(fields: [userId], references: [id])
+  maintenanceRequests MaintenanceRequest[]
+
+  @@map("vendors")
 }
 
 model Otp {
@@ -217,40 +239,6 @@ model Unit {
 
   @@index([complexId], map: "units_idx_complex_id")
   @@map("units")
-}
-
-model Vendor {
-  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-
-  specialty String?   @db.VarChar(255)
-  rating    Float?    @default(0.0)
-  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  user                User?
-  maintenanceRequests MaintenanceRequest[]
-
-  @@map("vendors")
-}
-
-model Notification {
-  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-
-  userId      String    @map("user_id") @db.Uuid
-  type        String    @db.VarChar(50)
-  channel     String    @db.VarChar(50)
-  content     String
-  status      String    @default("PENDING") @db.VarChar(50)
-  scheduledAt DateTime? @map("scheduled_at") @db.Timestamptz(6)
-  sentAt      DateTime? @map("sent_at") @db.Timestamptz(6)
-  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([userId], map: "notifications_idx_user_id")
-  @@map("notifications")
 }
 
 enum IdType {

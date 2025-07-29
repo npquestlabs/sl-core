@@ -2,9 +2,7 @@ import { NextFunction, Request, Response } from 'express'
 import { Prisma } from '../../generated/prisma'
 import { AppError } from '../util/error'
 import { logger } from '../configs/logger'
-import config from '../configs/environment'
-
-const isProduction = config.environment === 'production'
+import envConfig from '../configs/environment'
 
 function handlePrismaError(err: Prisma.PrismaClientKnownRequestError): {
   statusCode: number
@@ -88,7 +86,7 @@ export default function errorHandler(
   } else if (err instanceof Error) {
     logMessage = `Generic Error: ${err.message}`
     errorToLog = err
-    if (!isProduction) {
+    if (!envConfig.isProduction) {
       responseBody.error = err.message
     }
   } else {

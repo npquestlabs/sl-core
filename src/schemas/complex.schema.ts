@@ -2,7 +2,7 @@ import z from 'zod'
 
 export const CreateComplexSchema = z.object({
     name: z.string().min(1, 'Name is required').max(50, 'Name must be less than 50 characters'),
-    description: z.string().min(1, 'Description is required').max(500, 'Description must be less than 500 characters'),
+    description: z.string().max(500, 'Description must be less than 500 characters').optional(),
     cityName: z.string().min(1, 'City is required').max(50, 'City must be less than 50 characters'),
     countryCode: z.string().min(1, 'Country is required').max(50, 'Country must be less than 50 characters'),
     street: z.string().min(1, 'Street is required').max(100, 'Street must be less than 100 characters').optional(),

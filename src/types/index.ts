@@ -2,8 +2,6 @@ import { Landlord, Tenant, Vendor } from '../../generated/prisma'
 
 export type LocalUser = {
   id: string
-  firstName: string
-  lastName: string
   email: string
   landlord: Landlord | null
   tenant: Tenant | null
