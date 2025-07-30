@@ -1,6 +1,9 @@
 import express from 'express'
 import { authenticate, me } from '../middlewares/auth.middleware'
-import { transformTokenBody, validateBody } from '../middlewares/validator.middleware'
+import {
+  transformTokenBody,
+  validateBody,
+} from '../middlewares/validator.middleware'
 import * as authController from '../controllers/auth.controller'
 import {
   LoginSchema,
@@ -12,7 +15,6 @@ import {
 } from '../schemas/user.schema'
 
 const router = express.Router()
-
 
 /**
  * @swagger
@@ -48,7 +50,11 @@ const router = express.Router()
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/register/stage-one', validateBody(RegisterStageOneSchema), authController.registerStageOne)
+router.post(
+  '/register/stage-one',
+  validateBody(RegisterStageOneSchema),
+  authController.registerStageOne,
+)
 
 /**
  * @swagger
@@ -84,7 +90,11 @@ router.post('/register/stage-one', validateBody(RegisterStageOneSchema), authCon
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/register/stage-two', validateBody(RegisterStageTwoSchema), authController.registerStageTwo)
+router.post(
+  '/register/stage-two',
+  validateBody(RegisterStageTwoSchema),
+  authController.registerStageTwo,
+)
 
 /**
  * @swagger
@@ -114,7 +124,11 @@ router.post('/register/stage-two', validateBody(RegisterStageTwoSchema), authCon
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/register/resend-verification', validateBody(RegisterStageOneSchema), authController.resendVerificationCode);
+router.post(
+  '/register/resend-verification',
+  validateBody(RegisterStageOneSchema),
+  authController.resendVerificationCode,
+)
 
 /**
  * @swagger
@@ -192,7 +206,11 @@ router.post('/login', validateBody(LoginSchema), authController.login)
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/forgot-password', validateBody(EmailSchema), authController.forgotPassword)
+router.post(
+  '/forgot-password',
+  validateBody(EmailSchema),
+  authController.forgotPassword,
+)
 
 /**
  * @swagger
@@ -224,7 +242,12 @@ router.post('/forgot-password', validateBody(EmailSchema), authController.forgot
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/verifications/use', validateBody(TokenSchema), transformTokenBody(EmailSchema), authController.loginWithEmail)
+router.post(
+  '/verifications/use',
+  validateBody(TokenSchema),
+  transformTokenBody(EmailSchema),
+  authController.loginWithEmail,
+)
 
 /**
  * @swagger
@@ -297,7 +320,12 @@ router.post('/verifications/new', authController.sendVerificationLink)
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/reset-password', authenticate, validateBody(PasswordSchema), authController.updatePassword)
+router.post(
+  '/reset-password',
+  authenticate,
+  validateBody(PasswordSchema),
+  authController.updatePassword,
+)
 
 /**
  * @swagger

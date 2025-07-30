@@ -16,5 +16,5 @@ export const PaginationSchema = z.object({
       message: 'Page must be a positive number',
     }),
   filter: z.string().max(99, 'Filter text too long').optional(),
-  order: z.record(z.enum(['asc', 'desc'])).optional()
+  order: z.record(z.enum(['asc', 'desc'])).optional(),
 })

@@ -38,7 +38,11 @@ router.use(expect(['Landlord']))
  *       403:
  *         description: Permission denied
  */
-router.patch('/me', validateBody(UpdateLandlordSchema), landlordController.updateLandlord)
+router.patch(
+  '/me',
+  validateBody(UpdateLandlordSchema),
+  landlordController.updateLandlord,
+)
 
 /**
  * @swagger

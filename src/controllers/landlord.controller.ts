@@ -29,29 +29,49 @@ export const getLandlordSummary = async (req: Request, res: Response) => {
     }
 
     const results = await Promise.all([
-      unitService.countUnits({ complex: { landlordId }, deletedAt: null }).then(count => ({ units: count })),
-      complexService.countComplexes({ landlordId, deletedAt: null }).then(count => ({ complexes: count })),
-      leaseService.countLeases({ landlordId, status: LeaseStatus.ACTIVE, deletedAt: null }).then(count => ({ tenants: count })),
-      unitService.countUnits({
-        complex: {
-          landlordId
-        },
-        leases: {
-          some: {
-            status: LeaseStatus.EXPIRED,
-            deletedAt: null,
+      unitService
+        .countUnits({ complex: { landlordId }, deletedAt: null })
+        .then((count) => ({ units: count })),
+      complexService
+        .countComplexes({ landlordId, deletedAt: null })
+        .then((count) => ({ complexes: count })),
+      leaseService
+        .countLeases({
+          landlordId,
+          status: LeaseStatus.ACTIVE,
+          deletedAt: null,
+        })
+        .then((count) => ({ tenants: count })),
+      unitService
+        .countUnits({
+          complex: {
+            landlordId,
           },
-        },
-        deletedAt: null,
-      }).then(count => ({ payments: count })),
-      maintenanceRequestsService.countMaintenances({
-        unit: {
-          complex: { landlordId }
-        },
-        status: MaintenanceStatus.PENDING,
-        deletedAt: null,
-      }).then(count => ({ maintenanceRequests: count })),
-    ]).then(results => results.reduce((acc, curr) => ({ ...acc, ...curr }), {}) as LandLordSummary);
+          leases: {
+            some: {
+              status: LeaseStatus.EXPIRED,
+              deletedAt: null,
+            },
+          },
+          deletedAt: null,
+        })
+        .then((count) => ({ payments: count })),
+      maintenanceRequestsService
+        .countMaintenances({
+          unit: {
+            complex: { landlordId },
+          },
+          status: MaintenanceStatus.PENDING,
+          deletedAt: null,
+        })
+        .then((count) => ({ maintenanceRequests: count })),
+    ]).then(
+      (results) =>
+        results.reduce(
+          (acc, curr) => ({ ...acc, ...curr }),
+          {},
+        ) as LandLordSummary,
+    )
 
     res.json(results)
   } catch (error) {
@@ -70,7 +90,9 @@ export const getCurrentUser = async (req: Request, res: Response) => {
     if (!user.landlord?.id) {
       return res.status(403).json({ error: 'Unauthorized' })
     }
-    const landlord = await landlordService.getLandlordWithPopulatedUser(String(user.landlord.id))
+    const landlord = await landlordService.getLandlordWithPopulatedUser(
+      String(user.landlord.id),
+    )
     res.status(200).json(landlord)
   } catch (error) {
     logger.error(error)

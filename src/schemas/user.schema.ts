@@ -21,22 +21,27 @@ export const RegisterArtisanSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   middleName: z.string().optional(),
-  specialty: z.string().optional().default("N/A"),
+  specialty: z.string().optional().default('N/A'),
 })
 
-export const RegisterUserSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters long'),
-  landlord: RegisterLandlordSchema.optional(),
-  tenant: RegisterTenantSchema.optional(),
-  vendor: RegisterArtisanSchema.optional(),
-}).refine((data) => {
-  const { landlord, tenant, vendor } = data
-  const roles = [landlord, tenant, vendor].filter(Boolean)
-  return roles.length === 1
-}, {
-  message: 'Exactly one role is required',
-})
+export const RegisterUserSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(6, 'Password must be at least 6 characters long'),
+    landlord: RegisterLandlordSchema.optional(),
+    tenant: RegisterTenantSchema.optional(),
+    vendor: RegisterArtisanSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      const { landlord, tenant, vendor } = data
+      const roles = [landlord, tenant, vendor].filter(Boolean)
+      return roles.length === 1
+    },
+    {
+      message: 'Exactly one role is required',
+    },
+  )
 
 export const RegisterStageOneSchema = z.object({
   email: z.string().email('Invalid email address'),

@@ -67,7 +67,10 @@ export async function getLandLordComplex(req: Request, res: Response) {
     return res.status(400).json({ error: 'Complex ID is required' })
   }
 
-  const complex = await complexService.getComplex({ id: complexId, landlordId: user.landlord.id })
+  const complex = await complexService.getComplex({
+    id: complexId,
+    landlordId: user.landlord.id,
+  })
 
   if (!complex) {
     return res.status(404).json({ error: 'Complex not found' })

@@ -100,7 +100,7 @@ export async function getUnitsOfTenant(
   tenantId: string,
   pagination: z.infer<typeof PaginationSchema>,
 ): Promise<PaginatedResponse<Prisma.UnitGetPayload<Record<string, never>>>> {
-  const { page, limit, filter } = pagination;
+  const { page, limit, filter } = pagination
 
   const baseWhereConditions: Prisma.UnitWhereInput[] = [
     {
@@ -112,13 +112,12 @@ export async function getUnitsOfTenant(
         },
       },
       deletedAt: null,
-    }
-  ];
-
+    },
+  ]
 
   const whereClause: Prisma.UnitWhereInput = {
-    AND: baseWhereConditions
-  };
+    AND: baseWhereConditions,
+  }
 
   if (filter) {
     whereClause.AND = [
@@ -134,13 +133,13 @@ export async function getUnitsOfTenant(
             },
           },
         ],
-      }
-    ];
+      },
+    ]
   }
 
   const total = await prisma.unit.count({
     where: whereClause,
-  });
+  })
 
   const units = await prisma.unit.findMany({
     where: whereClause,
@@ -149,9 +148,9 @@ export async function getUnitsOfTenant(
     orderBy: {
       createdAt: 'desc',
     },
-  });
+  })
 
-  return { data: units, meta: { limit, page, total } };
+  return { data: units, meta: { limit, page, total } }
 }
 
 export async function deleteUnit(where: Prisma.UnitWhereUniqueInput) {
@@ -162,7 +161,6 @@ export async function deleteUnit(where: Prisma.UnitWhereUniqueInput) {
 
   return deletedUnit ?? null
 }
-
 
 export async function getUnitsOfLandlord(
   landlordId: string,
@@ -200,6 +198,6 @@ export async function getUnitsOfLandlord(
 
 export async function countUnits(where: Prisma.UnitWhereInput = {}) {
   return prisma.unit.count({
-    where
+    where,
   })
 }

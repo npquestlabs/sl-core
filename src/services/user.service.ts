@@ -55,7 +55,9 @@ export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
 
   const sanitizedUser = sanitizeUser(createdUser)
 
-  const options: jwt.SignOptions = { expiresIn: config.isProduction ? '24h' : '24m' }
+  const options: jwt.SignOptions = {
+    expiresIn: config.isProduction ? '24h' : '24m',
+  }
 
   const accessToken = generateToken(sanitizedUser, options)
 
@@ -88,18 +90,18 @@ export const getUserWithPopulatedData = async (id: string) => {
     include: {
       landlord: {
         omit: {
-          userId: true
-        }
+          userId: true,
+        },
       },
       tenant: {
         omit: {
-          userId: true
-        }
+          userId: true,
+        },
       },
       vendor: {
         omit: {
-          userId: true
-        }
+          userId: true,
+        },
       },
     },
   })
@@ -145,7 +147,7 @@ export const updateUserPassword = async (userId: string, password: string) => {
       throw new AppError('User not found', 404)
     }
 
-    if (user.password && await bcrypt.compare(password, user.password)) {
+    if (user.password && (await bcrypt.compare(password, user.password))) {
       throw new AppError(
         'New password cannot be the same as the old password',
         400,

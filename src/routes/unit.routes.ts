@@ -1,7 +1,10 @@
 import express from 'express'
 import * as unitsController from '../controllers/unit.controller'
 import { authenticate, expect } from '../middlewares/auth.middleware'
-import { validateBody, validateQuery } from '../middlewares/validator.middleware'
+import {
+  validateBody,
+  validateQuery,
+} from '../middlewares/validator.middleware'
 import { UpdateUnitSchema } from '../schemas/unit.schema'
 import { PaginationSchema } from '../schemas/extras.schema'
 
@@ -63,7 +66,12 @@ router.use(authenticate)
  *       403:
  *         description: Permission denied
  */
-router.get('/', expect(['Landlord']), validateQuery(PaginationSchema), unitsController.landlordGetUnits)
+router.get(
+  '/',
+  expect(['Landlord']),
+  validateQuery(PaginationSchema),
+  unitsController.landlordGetUnits,
+)
 
 /**
  * @swagger
@@ -96,7 +104,11 @@ router.get('/', expect(['Landlord']), validateQuery(PaginationSchema), unitsCont
  *       404:
  *         description: Unit not found or access denied
  */
-router.get('/:unitId', expect(['Landlord', 'Tenant']), unitsController.getUnitWithPopulatedComplex)
+router.get(
+  '/:unitId',
+  expect(['Landlord', 'Tenant']),
+  unitsController.getUnitWithPopulatedComplex,
+)
 
 /**
  * @swagger
@@ -137,7 +149,12 @@ router.get('/:unitId', expect(['Landlord', 'Tenant']), unitsController.getUnitWi
  *       404:
  *         description: Unit not found
  */
-router.patch('/:unitId', expect(['Landlord']), validateBody(UpdateUnitSchema), unitsController.updateUnit)
+router.patch(
+  '/:unitId',
+  expect(['Landlord']),
+  validateBody(UpdateUnitSchema),
+  unitsController.updateUnit,
+)
 
 /**
  * @swagger

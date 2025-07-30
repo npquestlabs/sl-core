@@ -85,7 +85,9 @@ export const registerStageTwo = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body
-  const result = await authService.loginUser(email, password)
+  const console = req.headers['x-client'] ?? null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await authService.loginUser(email, password, console as any)
   res.status(200).json(result)
 }
 
@@ -121,7 +123,9 @@ export const updatePassword = async (req: Request, res: Response) => {
 
 export const loginWithEmail = async (req: Request, res: Response) => {
   const { email } = req.body
-  const result = await authService.loginWithEmail(email)
+  const console = req.headers['x-client'] ?? null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await authService.loginWithEmail(email, console as any)
   res.status(200).json(result)
 }
 
