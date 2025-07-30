@@ -7,7 +7,7 @@ import config from '../configs/environment'
 import jwt from 'jsonwebtoken'
 import { prisma } from '../configs/prisma'
 
-export const loginUser = async (email: string, password: string) => {
+export const loginUser = async (email: string, password: string, console: 'landlord' | 'tenant' | 'vendor' | null) => {
   const user = await prisma.user.findUnique({
     where: { email },
     include: { landlord: true, tenant: true, vendor: true },
@@ -18,6 +18,10 @@ export const loginUser = async (email: string, password: string) => {
     !(user.password && (await bcrypt.compare(password, user.password)))
   ) {
     throw new LoginError()
+  }
+
+  if (console && !user[console]) {
+    throw new AppError("Wrong dashboard, kindly visit the correct dashboard to login", 403)
   }
 
   const sanitizedUser = sanitizeUser(user)
@@ -31,7 +35,7 @@ export const loginUser = async (email: string, password: string) => {
   return { user: sanitizedUser, tokens: { access: accessToken } }
 }
 
-export const loginWithEmail = async (email: string) => {
+export const loginWithEmail = async (email: string, console: 'landlord' | 'tenant' | 'vendor') => {
   const omit = {
     password: true,
   }
@@ -43,6 +47,10 @@ export const loginWithEmail = async (email: string) => {
   const user = await userService.getUserByEmail(email, omit, include)
   if (!user) {
     throw new AppError('User not found', 404)
+  }
+
+  if (!user[console]) {
+    throw new AppError("Wrong dashboard, kindly visit the correct dashboard to login", 403)
   }
 
   const sanitizedUser = sanitizeUser(user)
