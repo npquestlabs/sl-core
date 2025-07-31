@@ -40,7 +40,7 @@ app.use(
   cors({
     origin: envConfig.allowedOrigins,
     methods: ['OPTIONS', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Client'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-client'],
   }),
 )
 
