@@ -8,8 +8,10 @@ updates:
       - 'dependencies'
       - 'dependabot'
     reviewers:
-      - 'nisaacdz'
-    open-pull-requests-limit: 3
+      - "nisaacdz"
+    # OPTIONAL: Limit the number of open PRs from Dependabot for npm
+    open-pull-requests-limit: 2
+    # OPTIONAL: Customize commit messages
     commit-message:
       prefix: 'chore'
       include: 'scope'
