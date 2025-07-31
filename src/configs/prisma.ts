@@ -8,9 +8,6 @@ export async function connectPrisma() {
     .then(() => {
       console.log('Connected to the database')
     })
-    .catch((error: Error) => {
-      console.error('Error connecting to the database:', error.message)
-    })
 }
 
 export async function disconnectPrisma() {

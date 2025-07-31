@@ -32,7 +32,7 @@ app.use(
   swaggerConfig.swaggerUi.setup(swaggerConfig.swaggerSpec),
 )
 
-// Block requests from non-allowed origins
+// Bounce non-allowed requests
 if (envConfig.isProduction) app.use(bouncer)
 
 // Add CORS headers

@@ -27,7 +27,7 @@ export const loginUser = async (email: string, password: string, console: 'landl
   const sanitizedUser = sanitizeUser(user)
 
   const options: jwt.SignOptions = {
-    expiresIn: config.isProduction ? '24h' : '24m',
+    expiresIn: config.isProduction ? '24h' : '48m',
   }
 
   const accessToken = generateToken(sanitizedUser, options)

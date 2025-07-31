@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { verifyToken } from '../util/token'
 import { logger } from '../configs/logger'
+import { LocalUser } from '../types'
 
 export function authenticate(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization
@@ -62,11 +63,16 @@ export function me(req: Request, res: Response) {
   const token = authHeader.split(' ')[1]
 
   try {
-    const user = verifyToken(token)
+    const { landlord, tenant, vendor, ...user } = verifyToken<LocalUser>(token)
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
-    return res.status(200).json(user)
+    return res.status(200).json({
+      ...(landlord || {}),
+      ...(tenant || {}),
+      ...(vendor || {}),
+      user,
+    })
   } catch (err) {
     logger.error(err)
     return res.status(401).json({ error: 'Invalid token' })
