@@ -9,7 +9,7 @@ import bcrypt from 'bcryptjs'
 import { LocalUser } from '../src/types'
 
 let testLandlordUser: LocalUser
-let landlordTokens: { access: string };
+let landlordTokens: { access: string }
 
 let otherTestLandlordUser: LocalUser
 let otherLandlordTokens: { access: string }

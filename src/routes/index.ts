@@ -3,7 +3,7 @@ import authRoutes from './auth.routes'
 import userRoutes from './user.routes'
 import complexRoutes from './complex.routes'
 import unitRoutes from './unit.routes'
-import landlordRoutes from './landlord.routes'
+import staffRoutes from './staff.routes'
 import paymentRoutes from './payment.routes'
 import maintenanceRoutes from './maintenance.routes'
 
@@ -17,7 +17,7 @@ router.use('/auth', authRoutes)
 router.use('/users', userRoutes)
 router.use('/complexes', complexRoutes)
 router.use('/units', unitRoutes)
-router.use('/landlords', landlordRoutes)
+router.use('/staffs', staffRoutes)
 router.use('/payments', paymentRoutes)
 router.use('/maintenance', maintenanceRoutes)
 

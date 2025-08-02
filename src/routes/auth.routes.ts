@@ -7,12 +7,14 @@ import {
 import * as authController from '../controllers/auth.controller'
 import {
   LoginSchema,
-  EmailSchema,
-  TokenSchema,
-  PasswordSchema,
   RegisterStageOneSchema,
   RegisterStageTwoSchema,
 } from '../schemas/user.schema'
+import {
+  EmailSchema,
+  TokenSchema,
+  PasswordSchema,
+} from '../schemas/extras.schema'
 
 const router = express.Router()
 

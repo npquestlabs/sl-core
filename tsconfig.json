@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    
     "target": "es2020",
 
     "module": "commonjs",
@@ -18,25 +17,17 @@
     "skipLibCheck": true,
 
     "lib": ["es2020"],
-    
+
     "sourceMap": true,
-    
+
     "declaration": true,
 
-    "moduleResolution": "node",
+    "moduleResolution": "node"
 
     // ... leave any other options that were already uncommented here ... // I've forgotten the rest of the options
-
   },
-  
-  "include": [
-    "src/**/*.ts",
-    "tests/**/.ts"
-  ],
 
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts",
-    "dist"
-  ]
+  "include": ["src/**/*.ts", "tests/**/.ts"],
+
+  "exclude": ["node_modules", "**/*.spec.ts", "dist"]
 }

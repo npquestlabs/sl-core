@@ -11,13 +11,13 @@ export const RegisterTenantSchema = z.object({
   middleName: z.string().optional(),
 })
 
-export const RegisterLandlordSchema = z.object({
+export const RegisterStaffSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   middleName: z.string().optional(),
 })
 
-export const RegisterArtisanSchema = z.object({
+export const RegisterVendorSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   middleName: z.string().optional(),
@@ -28,14 +28,14 @@ export const RegisterUserSchema = z
   .object({
     email: z.string().email('Invalid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters long'),
-    landlord: RegisterLandlordSchema.optional(),
+    staff: RegisterStaffSchema.optional(),
     tenant: RegisterTenantSchema.optional(),
-    vendor: RegisterArtisanSchema.optional(),
+    vendor: RegisterVendorSchema.optional(),
   })
   .refine(
     (data) => {
-      const { landlord, tenant, vendor } = data
-      const roles = [landlord, tenant, vendor].filter(Boolean)
+      const { staff, tenant, vendor } = data
+      const roles = [staff, tenant, vendor].filter(Boolean)
       return roles.length === 1
     },
     {
@@ -61,7 +61,7 @@ export const UpdateTenantSchema = z
     message: 'At least one allowed field is required for update',
   })
 
-export const UpdateLandlordSchema = z
+export const UpdateStaffSchema = z
   .object({
     proofOfOwnership: z.string().url('Invalid URL').optional(),
     bankName: z.string().optional(),
@@ -76,7 +76,7 @@ export const UpdateLandlordSchema = z
     message: 'At least one allowed field is required for update',
   })
 
-export const UpdateArtisanSchema = z
+export const UpdateVendorSchema = z
   .object({
     deletedAt: z.date().optional(),
     specialty: z.string().optional(),
@@ -101,27 +101,31 @@ export const UpdateUserSchema = z
     message: 'At least one allowed field is required for update',
   })
 
-export const EmailSchema = z.object({
-  email: z.string().email('Invalid email address'),
+export const LocalStaffSchema = z.object({
+  id: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
 })
 
-export const TokenSchema = z.object({
-  token: z.string().min(1, 'Token is required'),
+export const LocalTenantSchema = z.object({
+  id: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().email().nullable(),
 })
 
-export const PasswordSchema = z.object({
-  password: z.string().min(6, 'Password must be at least 6 characters long'),
+export const LocalVendorSchema = z.object({
+  id: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().email().nullable(),
+  specialty: z.string().nullable(),
 })
 
-export const AuthTokensSchema = z.object({
-  access: z.string(),
-})
-
-export const AuthSuccessResponseSchema = z.object({
-  user: RegisterUserSchema,
-  tokens: AuthTokensSchema,
-})
-
-export const MessageResponseSchema = z.object({
-  message: z.string(),
+export const LocalUserSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  staff: LocalStaffSchema.nullable(),
+  tenant: LocalTenantSchema.nullable(),
+  vendor: LocalVendorSchema.nullable(),
 })

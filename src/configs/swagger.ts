@@ -4,10 +4,12 @@ import {
   RegisterStageOneSchema,
   RegisterStageTwoSchema,
   LoginSchema,
+} from '../schemas/user.schema'
+import {
   EmailSchema,
   TokenSchema,
   PasswordSchema,
-} from '../schemas/user.schema'
+} from '../schemas/extras.schema'
 import { extendZodWithOpenApi, createDocument } from 'zod-openapi'
 import swaggerJsdoc from 'swagger-jsdoc'
 import { z } from 'zod'
@@ -16,7 +18,7 @@ extendZodWithOpenApi(z)
 
 RegisterUserSchema.openapi({
   ref: 'RegisterUser',
-  description: 'Register a new user (Tenant, Landlord, or Vendor)',
+  description: 'Register a new user (Tenant, Staff, or Vendor)',
 })
 RegisterStageOneSchema.openapi({
   ref: 'RegisterStageOne',
@@ -83,11 +85,11 @@ export const openApiDoc = createDocument({
             format: 'email',
             example: 'user@example.com',
           },
-          landlord: {
+          staff: {
             type: 'object',
             nullable: true,
             additionalProperties: true,
-            description: 'Landlord profile data if user is a landlord',
+            description: 'Staff profile data if user is a staff',
           },
           tenant: {
             type: 'object',
@@ -107,7 +109,7 @@ export const openApiDoc = createDocument({
           'firstName',
           'lastName',
           'email',
-          'landlord',
+          'staff',
           'tenant',
           'vendor',
         ],

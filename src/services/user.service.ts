@@ -11,16 +11,16 @@ import jwt from 'jsonwebtoken'
 
 export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
   data.password = await bcrypt.hash(data.password, 10)
-  const { landlord, tenant, vendor, ...userData } = data
+  const { staff, tenant, vendor, ...userData } = data
 
   const createdUser = await prisma.user.create({
     data: {
       ...userData,
 
-      landlord: {
-        ...(landlord && {
+      staff: {
+        ...(staff && {
           create: {
-            ...landlord,
+            ...staff,
           },
         }),
       },
@@ -43,7 +43,7 @@ export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
       password: true,
     },
     include: {
-      landlord: true,
+      staff: true,
       tenant: true,
       vendor: true,
     },
@@ -88,7 +88,7 @@ export const getUserWithPopulatedData = async (id: string) => {
       password: true,
     },
     include: {
-      landlord: {
+      staff: {
         omit: {
           userId: true,
         },

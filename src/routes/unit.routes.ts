@@ -16,8 +16,8 @@ router.use(authenticate)
  * @swagger
  * /units:
  *   get:
- *     summary: Get all units for the authenticated landlord
- *     description: Returns a paginated list of units belonging to the authenticated landlord. Only accessible by users with the Landlord role.
+ *     summary: Get all units for the authenticated staff
+ *     description: Returns a paginated list of units belonging to the authenticated staff. Only accessible by users with the Staff role.
  *     tags:
  *       - Units
  *     security:
@@ -68,17 +68,17 @@ router.use(authenticate)
  */
 router.get(
   '/',
-  expect(['Landlord']),
+  expect(['Staff']),
   validateQuery(PaginationSchema),
-  unitsController.landlordGetUnits,
+  unitsController.staffGetUnits,
 )
 
 /**
  * @swagger
  * /units/{unitId}:
  *   get:
- *     summary: Get a unit by ID (Landlord or Tenant)
- *     description: Returns a unit by its ID. Accessible by Landlord (if owns the unit) or Tenant (if actively leasing the unit).
+ *     summary: Get a unit by ID (Staff or Tenant)
+ *     description: Returns a unit by its ID. Accessible by Staff (if owns the unit) or Tenant (if actively leasing the unit).
  *     tags:
  *       - Units
  *     security:
@@ -104,18 +104,14 @@ router.get(
  *       404:
  *         description: Unit not found or access denied
  */
-router.get(
-  '/:unitId',
-  expect(['Landlord', 'Tenant']),
-  unitsController.getUnitWithPopulatedComplex,
-)
+router.get('/:unitId', expect(['Staff', 'Tenant']), unitsController.getUnit)
 
 /**
  * @swagger
  * /units/{unitId}:
  *   patch:
- *     summary: Update a unit (Landlord only)
- *     description: Update details of a unit. Only accessible by the Landlord who owns the unit.
+ *     summary: Update a unit (Staff only)
+ *     description: Update details of a unit. Only accessible by the Staff who owns the unit.
  *     tags:
  *       - Units
  *     security:
@@ -151,7 +147,7 @@ router.get(
  */
 router.patch(
   '/:unitId',
-  expect(['Landlord']),
+  expect(['Staff']),
   validateBody(UpdateUnitSchema),
   unitsController.updateUnit,
 )
@@ -160,8 +156,8 @@ router.patch(
  * @swagger
  * /units/{unitId}:
  *   delete:
- *     summary: Delete a unit (Landlord only)
- *     description: Soft delete a unit. Only accessible by the Landlord who owns the unit.
+ *     summary: Delete a unit (Staff only)
+ *     description: Soft delete a unit. Only accessible by the Staff who owns the unit.
  *     tags:
  *       - Units
  *     security:
@@ -187,6 +183,6 @@ router.patch(
  *       404:
  *         description: Unit not found
  */
-router.delete('/:unitId', expect(['Landlord']), unitsController.deleteUnit)
+router.delete('/:unitId', expect(['Staff']), unitsController.deleteUnit)
 
 export default router

@@ -1,17 +1,9 @@
+import { LocalUserSchema } from '../schemas/user.schema'
 import { LocalUser } from '../types'
 
-export function sanitizeUser({
-  id,
-  email,
-  landlord,
-  tenant,
-  vendor,
-}: LocalUser & Record<string, unknown>): LocalUser {
-  return {
-    id,
-    email,
-    landlord,
-    tenant,
-    vendor,
-  }
+export function sanitizeUser(
+  user: LocalUser & Record<string, unknown>,
+): LocalUser {
+  const safeUser = LocalUserSchema.parse(user)
+  return safeUser
 }

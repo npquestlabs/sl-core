@@ -21,7 +21,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export function expect(allowed: ('Tenant' | 'Landlord' | 'Vendor')[]) {
+export function expect(allowed: ('Tenant' | 'Staff' | 'Vendor')[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = req.user
 
@@ -29,14 +29,14 @@ export function expect(allowed: ('Tenant' | 'Landlord' | 'Vendor')[]) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
-    const userPermissions: ('Tenant' | 'Landlord' | 'Vendor')[] = []
+    const userPermissions: ('Tenant' | 'Staff' | 'Vendor')[] = []
 
     if (user.tenant) {
       userPermissions.push('Tenant')
     }
 
-    if (user.landlord) {
-      userPermissions.push('Landlord')
+    if (user.staff) {
+      userPermissions.push('Staff')
     }
 
     if (user.vendor) {
@@ -63,12 +63,12 @@ export function me(req: Request, res: Response) {
   const token = authHeader.split(' ')[1]
 
   try {
-    const { landlord, tenant, vendor, ...user } = verifyToken<LocalUser>(token)
+    const { staff, tenant, vendor, ...user } = verifyToken<LocalUser>(token)
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
     return res.status(200).json({
-      ...(landlord || {}),
+      ...(staff || {}),
       ...(tenant || {}),
       ...(vendor || {}),
       user,
