@@ -17,7 +17,7 @@ router.use('/auth', authRoutes)
 router.use('/users', userRoutes)
 router.use('/complexes', complexRoutes)
 router.use('/units', unitRoutes)
-router.use('/staffs', staffRoutes)
+router.use('/staff', staffRoutes)
 router.use('/payments', paymentRoutes)
 router.use('/maintenance', maintenanceRoutes)
 
