@@ -4,7 +4,7 @@ import { UnitType } from '../../generated/prisma'
 export const CreateUnitSchema = z.object({
   type: z.nativeEnum(UnitType),
   label: z.string().optional().default(''),
-  desciption: z.string().optional(),
+  description: z.string().optional(),
   notes: z.string().optional(),
   rentAmount: z.number().optional(),
   rentCurrency: z.string().optional(),
