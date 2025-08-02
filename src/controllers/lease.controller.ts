@@ -1,190 +1,108 @@
 import { Request, Response } from 'express'
-import { prisma } from '../configs/prisma'
-import { AppError } from '../util/error'
+import * as leaseService from '../services/lease.service'
 import { CreateLeaseSchema, RenewLeaseSchema } from '../schemas/lease.schema'
-import {
-  createLease,
-  renewLease,
-  listLeases,
-  terminateLease,
-  getLeaseDetailsForPdf,
-} from '../services/lease.service'
-import { generateLeasePDF, generateRentCardPDF } from '../util/pdf'
+import { AppError } from '../util/error'
 
-export const createLeaseController = async (req: Request, res: Response) => {
+/**
+ * Handles the creation of a new lease.
+ * Requires the user to be an authenticated staff member.
+ */
+export const createLease = async (req: Request, res: Response) => {
   const user = req.user
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
-  if (!user.landlord) {
-    throw new AppError('User is not a landlord', 403)
+  if (!user?.staff) {
+    return res
+      .status(403)
+      .json({ error: 'Permission denied: Staff access required' })
   }
 
   const input = CreateLeaseSchema.parse(req.body)
+  const lease = await leaseService.createLease(user.staff.id, input)
 
-  const lease = await createLease(user.landlord.id, input)
-
-  return res.status(201).json({
-    success: true,
-    data: lease,
-  })
+  return res.status(201).json(lease)
 }
 
-export const renewLeaseController = async (req: Request, res: Response) => {
+/**
+ * Handles the renewal of an existing lease.
+ * Requires the user to be an authenticated staff member with access to the lease's complex.
+ */
+export const renewLease = async (req: Request, res: Response) => {
   const user = req.user
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  if (!user?.staff) {
+    return res
+      .status(403)
+      .json({ error: 'Permission denied: Staff access required' })
   }
 
-  if (!user.landlord) {
-    throw new AppError('User is not a landlord', 403)
-  }
-  const leaseId = req.params.leaseId
+  const { leaseId } = req.params
   const input = RenewLeaseSchema.parse(req.body)
 
-  const lease = await renewLease(leaseId, user.landlord.id, input)
+  const renewedLease = await leaseService.renewLease(
+    leaseId,
+    user.staff.id,
+    input,
+  )
 
-  return res.status(200).json({
-    success: true,
-    data: lease,
-  })
+  return res.status(200).json(renewedLease)
 }
 
-export const listLeasesController = async (req: Request, res: Response) => {
+/**
+ * Lists all leases for the complexes managed by the authenticated staff member.
+ */
+export const listStaffLeases = async (req: Request, res: Response) => {
   const user = req.user
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  if (!user?.staff) {
+    return res
+      .status(403)
+      .json({ error: 'Permission denied: Staff access required' })
   }
 
-  if (!user.landlord) {
-    throw new AppError('User is not a landlord', 403)
-  }
+  const leases = await leaseService.listLeasesForStaff(user.staff.id)
 
-  const leases = await listLeases(user.landlord.id)
-
-  return res.status(200).json({
-    success: true,
-    data: leases,
-  })
+  return res.status(200).json(leases)
 }
 
-export const terminateLeaseController = async (req: Request, res: Response) => {
+/**
+ * Retrieves the details of a single lease.
+ * Accessible by the staff member who manages the lease or the tenant of the lease.
+ */
+export const getLease = async (req: Request, res: Response) => {
   const user = req.user
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  if (!user || (!user.staff && !user.tenant)) {
+    return res.status(403).json({ error: 'Permission denied' })
   }
 
-  if (!user.landlord) {
-    throw new AppError('User is not a landlord', 403)
+  const { leaseId } = req.params
+
+  const lease = await leaseService.getLeaseDetails(leaseId)
+
+  // Security check: Verify the user is either the assigned staff or the tenant
+  const isStaff = user.staff?.id === lease.staffId
+  const isTenant = user.tenant?.id === lease.tenantId
+
+  if (!isStaff && !isTenant) {
+    throw new AppError('You do not have permission to view this lease', 403)
   }
-  const leaseId = req.params.leaseId
 
-  const lease = await terminateLease(leaseId, user.landlord.id)
-
-  return res.status(200).json({
-    success: true,
-    data: lease,
-  })
+  return res.status(200).json(lease)
 }
 
-export const downloadLeaseDocumentController = async (
-  req: Request,
-  res: Response,
-) => {
+/**
+ * Handles the termination of an active lease.
+ * Requires the user to be an authenticated staff member with access to the lease's complex.
+ */
+export const terminateLease = async (req: Request, res: Response) => {
   const user = req.user
-
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  if (!user?.staff) {
+    return res
+      .status(403)
+      .json({ error: 'Permission denied: Staff access required' })
   }
 
-  if (!user.landlord && !user.tenant) {
-    throw new AppError('User is not a landlord or tenant', 403)
-  }
+  const { leaseId } = req.params
+  const terminatedLease = await leaseService.terminateLease(
+    leaseId,
+    user.staff.id,
+  )
 
-  const leaseId = req.params.leaseId
-  const type = req.query.type as 'lease' | 'rentcard'
-
-  // Verify lease exists and user has permission
-  const lease = await prisma.lease.findUnique({
-    where: { id: leaseId },
-    include: {
-      landlord: true,
-      tenant: true,
-    },
-  })
-
-  if (!lease) throw new AppError('Lease not found', 404)
-
-  if (
-    lease.landlord.id !== user.landlord?.id &&
-    lease.tenant.id !== user.tenant?.id
-  ) {
-    throw new AppError('Unauthorized to access this document', 403)
-  }
-
-  const fullLeaseDetails = await getLeaseDetailsForPdf(leaseId)
-  const documentUrl =
-    type === 'rentcard'
-      ? await generateRentCardPDF(fullLeaseDetails)
-      : await generateLeasePDF(fullLeaseDetails)
-
-  return res.status(200).json({
-    success: true,
-    url: documentUrl,
-  })
-}
-
-export const getLeaseDetailsController = async (
-  req: Request,
-  res: Response,
-) => {
-  const user = req.user
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
-  if (!user.landlord && !user.tenant) {
-    throw new AppError('User is not a landlord or tenant', 403)
-  }
-
-  const leaseId = req.params.leaseId
-
-  const lease = await prisma.lease.findUnique({
-    where: { id: leaseId },
-    include: {
-      unit: {
-        include: {
-          complex: true,
-        },
-      },
-      tenant: {
-        include: {
-          user: true,
-        },
-      },
-      landlord: {
-        include: {
-          user: true,
-        },
-      },
-    },
-  })
-
-  if (!lease) {
-    throw new AppError('Lease not found', 404)
-  }
-
-  // Check if user is either landlord or tenant
-  if (
-    lease.landlord.id !== user.landlord?.id &&
-    lease.tenant.id !== user.tenant?.id
-  ) {
-    throw new AppError('Unauthorized to access this lease', 403)
-  }
-
-  return res.status(200).json({
-    success: true,
-    data: lease,
-  })
+  return res.status(200).json(terminatedLease)
 }

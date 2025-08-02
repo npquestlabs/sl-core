@@ -1,17 +1,12 @@
 import { Router } from 'express'
 import { authenticate } from '../middlewares/auth.middleware'
-import {
-  createLeaseController,
-  renewLeaseController,
-  listLeasesController,
-  terminateLeaseController,
-} from '../controllers/lease.controller'
+import * as leaseController from '../controllers/lease.controller'
 
 const router = Router()
 
-router.post('/lease', authenticate, createLeaseController)
-router.post('/:id/renew', authenticate, renewLeaseController)
-router.get('/lease', authenticate, listLeasesController)
-router.put('/:id/terminate', authenticate, terminateLeaseController)
+router.post('/lease', authenticate, leaseController.createLease)
+router.post('/:id/renew', authenticate, leaseController.renewLease)
+router.get('/lease', authenticate, leaseController.listStaffLeases)
+router.put('/:id/terminate', authenticate, leaseController.terminateLease)
 
 export default router

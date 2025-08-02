@@ -18,7 +18,7 @@ const envConfig = {
   appName: 'Smart Landlord',
   isProduction: variables.environment == 'production',
   clients: {
-    landlord: 'landlord',
+    staff: 'staff',
     tenant: 'tenant',
     vendor: 'vendor',
   },

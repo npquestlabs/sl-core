@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response } from 'express'
 import {
   UpdateMaintenanceRequestSchema,
@@ -17,18 +18,34 @@ export const createMaintenanceRequest = async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  if (!user.landlord && !user.tenant) {
+  const { unitId } = req.params
+  if (!unitId) {
+    return res.status(400).json({ error: 'Unit ID is required' })
+  }
+
+  // Security Check: Verify user has access to the unit before creating a request
+  const accessCheck: Prisma.UnitWhereUniqueInput = {
+    id: unitId,
+    deletedAt: null,
+  }
+
+  if (user.staff) {
+    accessCheck.complex = { assignments: { some: { staffId: user.staff.id } } }
+  } else if (user.tenant) {
+    accessCheck.leases = {
+      some: { tenantId: user.tenant.id, status: LeaseStatus.ACTIVE },
+    }
+  } else {
     return res.status(403).json({ error: 'Permission denied' })
   }
 
-  const { unitId } = req.params
-
-  if (!unitId) {
-    return res.status(400).json({ error: 'Invalid params' })
+  const unit = await unitService.getUnit(accessCheck)
+  if (!unit) {
+    return res.status(404).json({ error: 'Unit not found or access denied' })
   }
 
   const request = await maintenanceRequestsService.createMaintenanceRequest(
-    user,
+    user.id,
     unitId,
     req.body,
   )
@@ -38,11 +55,7 @@ export const createMaintenanceRequest = async (req: Request, res: Response) => {
 
 export const getMaintenanceRequests = async (req: Request, res: Response) => {
   const user = req.user
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
-  if (!user.landlord) {
+  if (!user?.staff) {
     return res.status(403).json({ error: 'Permission denied' })
   }
 
@@ -51,8 +64,8 @@ export const getMaintenanceRequests = async (req: Request, res: Response) => {
   >
 
   const result =
-    await maintenanceRequestsService.listMaintenanceRequestsOfLandlord(
-      user.landlord.id,
+    await maintenanceRequestsService.listMaintenanceRequestsOfStaff(
+      user.staff.id,
       pagination_query,
     )
 
@@ -69,18 +82,16 @@ export const getMaintenanceRequestsOfUnit = async (
   }
 
   const { unitId } = req.params
-
   if (!unitId) {
-    return res.status(400).json({ error: 'Invalid params' })
+    return res.status(400).json({ error: 'Unit ID is required' })
   }
 
   const accessOrConditions: Prisma.UnitWhereInput[] = []
 
-  if (user.landlord) {
+  if (user.staff) {
     accessOrConditions.push({
       complex: {
-        landlordId: user.landlord.id,
-        deletedAt: null,
+        assignments: { some: { staffId: user.staff.id } },
       },
     })
   }
@@ -91,10 +102,13 @@ export const getMaintenanceRequestsOfUnit = async (
         some: {
           tenantId: user.tenant.id,
           status: LeaseStatus.ACTIVE,
-          deletedAt: null,
         },
       },
     })
+  }
+
+  if (accessOrConditions.length === 0) {
+    return res.status(403).json({ error: 'Permission denied' })
   }
 
   const whereClause: Prisma.UnitWhereUniqueInput = {
@@ -103,10 +117,9 @@ export const getMaintenanceRequestsOfUnit = async (
     OR: accessOrConditions,
   }
 
-  const unit = unitService.getUnit(whereClause)
-
+  const unit = await unitService.getUnit(whereClause)
   if (!unit) {
-    return res.status(404).json({ error: 'Not found' })
+    return res.status(404).json({ error: 'Unit not found or access denied' })
   }
 
   const pagination_query = req.query as unknown as z.infer<
@@ -126,27 +139,22 @@ export const getMaintenanceRequestsOfComplex = async (
   res: Response,
 ) => {
   const user = req.user
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
-  if (!user.landlord) {
+  if (!user?.staff) {
     return res.status(403).json({ error: 'Permission denied' })
   }
 
   const { complexId } = req.params
-
   if (!complexId) {
-    return res.status(400).json({ error: 'Invalid params' })
+    return res.status(400).json({ error: 'Complex ID is required' })
   }
 
-  const complex = complexService.getComplex({
+  const complex = await complexService.getComplex({
     id: complexId,
-    landlordId: user.landlord.id,
+    assignments: { some: { staffId: user.staff.id } },
   })
 
   if (!complex) {
-    return res.status(404).json({ error: 'Not found' })
+    return res.status(404).json({ error: 'Complex not found or access denied' })
   }
 
   const pagination_query = req.query as unknown as z.infer<
@@ -164,8 +172,8 @@ export const getMaintenanceRequestsOfComplex = async (
 
 export const updateMaintenanceRequest = async (req: Request, res: Response) => {
   const user = req.user
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  if (!user?.staff) {
+    return res.status(403).json({ error: 'Permission denied' })
   }
 
   const requestId = req.params.id
@@ -174,13 +182,19 @@ export const updateMaintenanceRequest = async (req: Request, res: Response) => {
   const updatedRequest =
     await maintenanceRequestsService.updateMaintenanceRequest(requestId, input)
 
+  if (!updatedRequest) {
+    return res.status(404).json({ error: 'Request not found or access denied' })
+  }
+
   return res.status(200).json(updatedRequest)
 }
 
 export const submitVendorResponse = async (req: Request, res: Response) => {
   const user = req.user
-  if (!user || !user.vendor) {
-    return res.status(401).json({ error: 'Unauthorized - Vendor access only' })
+  if (!user?.vendor) {
+    return res
+      .status(403)
+      .json({ error: 'Permission denied: Vendor access only' })
   }
 
   const requestId = req.params.id
@@ -192,6 +206,12 @@ export const submitVendorResponse = async (req: Request, res: Response) => {
     input,
   )
 
+  if (!updatedRequest) {
+    return res
+      .status(404)
+      .json({ error: 'Request not found or not assigned to this vendor' })
+  }
+
   return res.status(200).json(updatedRequest)
 }
 
@@ -200,8 +220,10 @@ export const completeMaintenanceRequest = async (
   res: Response,
 ) => {
   const user = req.user
-  if (!user || !user.vendor) {
-    return res.status(401).json({ error: 'Unauthorized - Vendor access only' })
+  if (!user?.vendor) {
+    return res
+      .status(403)
+      .json({ error: 'Permission denied: Vendor access only' })
   }
 
   const requestId = req.params.id
@@ -213,6 +235,12 @@ export const completeMaintenanceRequest = async (
       user.vendor.id,
       input,
     )
+
+  if (!completedRequest) {
+    return res
+      .status(404)
+      .json({ error: 'Request not found or not assigned to this vendor' })
+  }
 
   return res.status(200).json(completedRequest)
 }

@@ -1,21 +1,21 @@
 import express from 'express'
 import { authenticate, expect } from '../middlewares/auth.middleware'
-import * as landlordController from '../controllers/landlord.controller'
+import * as staffController from '../controllers/staff.controller'
 import { validateBody } from '../middlewares/validator.middleware'
-import { UpdateLandlordSchema } from '../schemas/user.schema'
+import { UpdateStaffSchema } from '../schemas/user.schema'
 
 const router = express.Router()
 router.use(authenticate)
-router.use(expect(['Landlord']))
+router.use(expect(['Staff']))
 
 /**
  * @swagger
- * /landlord/me:
+ * /staff/me:
  *   patch:
- *     summary: Update landlord profile
- *     description: Update the profile of the currently authenticated landlord.
+ *     summary: Update staff profile
+ *     description: Update the profile of the currently authenticated staff.
  *     tags:
- *       - Landlord
+ *       - Staff
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -23,14 +23,14 @@ router.use(expect(['Landlord']))
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateLandlord'
+ *             $ref: '#/components/schemas/UpdateStaff'
  *     responses:
  *       200:
- *         description: Landlord updated successfully
+ *         description: Staff updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Landlord'
+ *               $ref: '#/components/schemas/Staff'
  *       400:
  *         description: Validation error
  *       401:
@@ -40,42 +40,42 @@ router.use(expect(['Landlord']))
  */
 router.patch(
   '/me',
-  validateBody(UpdateLandlordSchema),
-  landlordController.updateLandlord,
+  validateBody(UpdateStaffSchema),
+  staffController.updateStaff,
 )
 
 /**
  * @swagger
- * /landlord/me:
+ * /staff/me:
  *   get:
- *     summary: Get current landlord user
- *     description: Returns the currently authenticated landlord user.
+ *     summary: Get current staff user
+ *     description: Returns the currently authenticated staff user.
  *     tags:
- *       - Landlord
+ *       - Staff
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Current landlord user
+ *         description: Current staff user
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Landlord'
+ *               $ref: '#/components/schemas/Staff'
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Permission denied
  */
-router.get('/me', landlordController.getCurrentUser)
+router.get('/me', staffController.getCurrentUser)
 
 /**
  * @swagger
- * /landlord/summary:
+ * /staff/summary:
  *   get:
- *     summary: Get landlord summary counts
- *     description: Returns counts for units, complexes, active tenants, active maintenance requests, and upcoming payments for the authenticated landlord.
+ *     summary: Get staff summary counts
+ *     description: Returns counts for units, complexes, active tenants, active maintenance requests, and upcoming payments for the authenticated staff.
  *     tags:
- *       - Landlord
+ *       - Staff
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -97,6 +97,6 @@ router.get('/me', landlordController.getCurrentUser)
  *                 payments:
  *                   type: integer
  */
-router.get('/summary', landlordController.getLandlordSummary)
+router.get('/summary', staffController.getStaffSummary)
 
 export default router

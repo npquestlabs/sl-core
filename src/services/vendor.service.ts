@@ -1,10 +1,10 @@
 import { prisma } from '../configs/prisma'
-import { UpdateArtisanSchema } from '../schemas/user.schema'
+import { UpdateVendorSchema } from '../schemas/user.schema'
 import z from 'zod'
 
 export const updateVendor = async (
   id: string,
-  data: z.infer<typeof UpdateArtisanSchema>,
+  data: z.infer<typeof UpdateVendorSchema>,
 ) => {
   const vendor = await prisma.vendor.update({
     where: { id },

@@ -37,7 +37,7 @@ export const CreateLeaseSchema = z
 
 // --- Schema for Renewing an Existing Lease ---
 export const RenewLeaseSchema = z.object({
-  // unitId, tenantId, landlordId, rentAmount, currency, noticePeriod are derived from the existing lease
+  // unitId, tenantId, staffId, rentAmount, currency, noticePeriod are derived from the existing lease
   newEndsAt: z.coerce.date({
     required_error: 'New end date is required',
     invalid_type_error: 'Invalid new end date format',

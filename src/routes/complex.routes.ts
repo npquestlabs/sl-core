@@ -16,14 +16,14 @@ import {
 const router = express.Router()
 
 router.use(authenticate)
-router.use(expect(['Landlord']))
+router.use(expect(['Staff']))
 
 /**
  * @swagger
  * /complexes:
  *   post:
  *     summary: Create a new complex
- *     description: Create a new complex for the authenticated landlord.
+ *     description: Create a new complex for the authenticated staff.
  *     tags:
  *       - Complexes
  *     security:
@@ -58,8 +58,8 @@ router.post(
  * @swagger
  * /complexes:
  *   get:
- *     summary: Get all complexes for landlord
- *     description: Returns a paginated list of complexes belonging to the authenticated landlord.
+ *     summary: Get all complexes for staff
+ *     description: Returns a paginated list of complexes belonging to the authenticated staff.
  *     tags:
  *       - Complexes
  *     security:
@@ -111,7 +111,7 @@ router.post(
 router.get(
   '/',
   validateQuery(PaginationSchema),
-  complexController.getLandlordComplexes,
+  complexController.getStaffComplexes,
 )
 
 /**
@@ -119,7 +119,7 @@ router.get(
  * /complexes/{complexId}:
  *   get:
  *     summary: Get a complex by ID
- *     description: Returns a complex by its ID for the authenticated landlord.
+ *     description: Returns a complex by its ID for the authenticated staff.
  *     tags:
  *       - Complexes
  *     security:
@@ -145,14 +145,14 @@ router.get(
  *       404:
  *         description: Complex not found
  */
-router.get('/:complexId', complexController.getLandLordComplex)
+router.get('/:complexId', complexController.getStaffComplex)
 
 /**
  * @swagger
  * /complexes/{complexId}:
  *   patch:
  *     summary: Update a complex
- *     description: Update details of a complex. Only accessible by the landlord who owns the complex.
+ *     description: Update details of a complex. Only accessible by the staff who owns the complex.
  *     tags:
  *       - Complexes
  *     security:
@@ -197,7 +197,7 @@ router.patch(
  * /complexes/{complexId}:
  *   delete:
  *     summary: Delete a complex
- *     description: Delete a complex by its ID. Only accessible by the landlord who owns the complex.
+ *     description: Delete a complex by its ID. Only accessible by the staff who owns the complex.
  *     tags:
  *       - Complexes
  *     security:
@@ -230,7 +230,7 @@ router.delete('/:complexId', complexController.deleteComplex)
  * /complexes/{complexId}/units:
  *   get:
  *     summary: Get all units in a complex
- *     description: Returns a paginated list of units in a specific complex for the authenticated landlord.
+ *     description: Returns a paginated list of units in a specific complex for the authenticated staff.
  *     tags:
  *       - Complexes
  *     security:
@@ -298,7 +298,7 @@ router.get(
  * /complexes/{complexId}/units:
  *   post:
  *     summary: Create a unit in a complex
- *     description: Create a new unit in a specific complex for the authenticated landlord.
+ *     description: Create a new unit in a specific complex for the authenticated staff.
  *     tags:
  *       - Complexes
  *     security:
@@ -343,7 +343,7 @@ router.post(
  * /complexes/{complexId}/units/{unitId}:
  *   get:
  *     summary: Get a unit in a complex by ID
- *     description: Returns a unit by its ID within a specific complex for the authenticated landlord.
+ *     description: Returns a unit by its ID within a specific complex for the authenticated staff.
  *     tags:
  *       - Complexes
  *     security:
@@ -375,9 +375,6 @@ router.post(
  *       404:
  *         description: Unit not found
  */
-router.get(
-  '/:complexId/units/:unitId',
-  unitsController.getUnitByComplexIdAndUnitIdParams,
-)
+router.get('/:complexId/units/:unitId', unitsController.getUnit)
 
 export default router

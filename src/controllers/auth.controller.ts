@@ -135,7 +135,7 @@ export const sendVerificationLink = async (req: Request, res: Response) => {
   if (!user) {
     return res.status(404).json({ error: 'User not found' })
   }
-  if (!user.landlord && !user.tenant && !user.vendor) {
+  if (!user.staff && !user.tenant && !user.vendor) {
     return res.status(403).json({ error: 'Contact support' })
   }
 
@@ -143,8 +143,8 @@ export const sendVerificationLink = async (req: Request, res: Response) => {
   const origin = String(req.get('origin'))
   await sendVerificationEmail(
     user.email,
-    user.landlord
-      ? user.landlord
+    user.staff
+      ? user.staff
       : user.tenant
         ? user.tenant
         : user.vendor
