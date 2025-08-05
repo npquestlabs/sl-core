@@ -68,7 +68,9 @@ export const loginWithEmail = async (
 
   const sanitizedUser = sanitizeUser(user)
 
-  const options: jwt.SignOptions = { expiresIn: '24m' }
+  const options: jwt.SignOptions = {
+    expiresIn: config.isProduction ? '24h' : '48m',
+  }
 
   const accessToken = generateToken(sanitizedUser, options)
 

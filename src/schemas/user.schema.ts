@@ -24,10 +24,21 @@ export const RegisterVendorSchema = z.object({
   specialty: z.string().optional().default('N/A'),
 })
 
+export const BaseUserSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(6, 'Password must be at least 6 characters long').optional(),
+    avatarUrl: z.string().url().optional(),
+    staff: RegisterStaffSchema.optional(),
+    tenant: RegisterTenantSchema.optional(),
+    vendor: RegisterVendorSchema.optional(),
+  })
+
 export const RegisterUserSchema = z
   .object({
     email: z.string().email('Invalid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters long'),
+    avatarUrl: z.string().url().optional(),
     staff: RegisterStaffSchema.optional(),
     tenant: RegisterTenantSchema.optional(),
     vendor: RegisterVendorSchema.optional(),
@@ -42,6 +53,15 @@ export const RegisterUserSchema = z
       message: 'Exactly one role is required',
     },
   )
+
+export const OAuthUserSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    avatarUrl: z.string().url().optional(),
+    staff: RegisterStaffSchema.optional(),
+    tenant: RegisterTenantSchema.optional(),
+    vendor: RegisterVendorSchema.optional(),
+  });
 
 export const RegisterStageOneSchema = z.object({
   email: z.string().email('Invalid email address'),

@@ -329,6 +329,13 @@ router.post(
   authController.updatePassword,
 )
 
+
+router.post(
+  '/google',
+  validateBody(TokenSchema),
+  authController.googleAuth,
+)
+
 /**
  * @swagger
  * /auth/me:

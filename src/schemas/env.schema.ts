@@ -17,9 +17,12 @@ export default z.object({
   jwtSecret: z.string({
     required_error: 'JWT SECRET is Mandatory',
   }),
+  googleClientId: z.string({
+    required_error: 'GOOGLE CLIENT ID is Mandatory',
+  }),
   appEmail: z.string(),
   appEmailPassword: z.string(),
   allowedOrigins: z.array(z.string(), {
-    required_error: 'ALLOWED_ORIGINS is Mandatory',
+    required_error: 'ALLOWED ORIGINS is Mandatory',
   }),
 })
