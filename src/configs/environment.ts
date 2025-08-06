@@ -9,6 +9,7 @@ const variables = envSchema.parse({
   databaseUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
   googleClientId: process.env.GOOGLE_CLIENT_ID,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
   appEmail: process.env.APP_EMAIL,
   appEmailPassword: process.env.APP_EMAIL_PASS,
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') || [],

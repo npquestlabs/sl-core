@@ -1,33 +1,26 @@
 {
   "compilerOptions": {
     "target": "es2020",
-
     "module": "commonjs",
-
-    "outDir": "./dist",
-
-    "rootDir": "./src",
-
-    "esModuleInterop": true,
-
-    "forceConsistentCasingInFileNames": true,
-
-    "strict": true,
-
-    "skipLibCheck": true,
-
     "lib": ["es2020"],
-
+    "outDir": "./dist",
+    "rootDir": "./src",
     "sourceMap": true,
-
     "declaration": true,
-
-    "moduleResolution": "node"
-
-    // ... leave any other options that were already uncommented here ... // I've forgotten the rest of the options
+    "moduleResolution": "node",
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "resolveJsonModule": true,
+    "incremental": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
   },
-
-  "include": ["src/**/*.ts", "tests/**/.ts"],
-
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "**/*.spec.ts", "dist"]
 }
