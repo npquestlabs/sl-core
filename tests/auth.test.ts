@@ -227,12 +227,10 @@ describe('Auth Routes', () => {
       expect(dbUserAfterVerify?.tenant).toBeNull()
       expect(dbUserAfterVerify?.vendor).toBeNull()
 
-      const loginResponse = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: landlordRegData.email,
-          password: landlordRegData.password,
-        })
+      const loginResponse = await request(app).post('/api/v1/auth/login').send({
+        email: landlordRegData.email,
+        password: landlordRegData.password,
+      })
       expect(loginResponse.status).toBe(200)
       const { user: loggedInUser } = loginResponse.body as AuthResponseData
       expect(loggedInUser.email).toBe(landlordRegData.email)
@@ -409,12 +407,10 @@ describe('Auth Routes', () => {
       expect(loggedInUser.email).toBe(foundationalUser.email)
     })
     it('should return 401 for incorrect password', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: foundationalUser.email,
-          password: 'completelyWrongPasswordAgain',
-        })
+      const response = await request(app).post('/api/v1/auth/login').send({
+        email: foundationalUser.email,
+        password: 'completelyWrongPasswordAgain',
+      })
       expect(response.status).toBe(401)
       expect(response.body.error).toBe('Invalid email or password')
     })

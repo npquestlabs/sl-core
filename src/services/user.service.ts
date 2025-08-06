@@ -63,7 +63,7 @@ export const createUser = async (data: z.infer<typeof BaseUserSchema>) => {
 
   const accessToken = generateToken(sanitizedUser, options)
 
-  return { user: sanitizedUser, tokens: { access: accessToken } }
+  return { message: 'Registered successfully', tokens: { access: accessToken } }
 }
 
 export const updateUser = async (

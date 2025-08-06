@@ -7,6 +7,7 @@ import {
 import * as authController from '../controllers/auth.controller'
 import {
   LoginSchema,
+  OAuthUserSchema,
   RegisterStageOneSchema,
   RegisterStageTwoSchema,
 } from '../schemas/user.schema'
@@ -329,11 +330,13 @@ router.post(
   authController.updatePassword,
 )
 
+router.post('/google', validateBody(TokenSchema), authController.googleAuth)
 
 router.post(
-  '/google',
+  '/google/register',
   validateBody(TokenSchema),
-  authController.googleAuth,
+  transformTokenBody(OAuthUserSchema),
+  authController.googleAuthCompleteRegistration,
 )
 
 /**

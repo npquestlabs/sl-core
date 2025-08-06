@@ -20,6 +20,9 @@ export default z.object({
   googleClientId: z.string({
     required_error: 'GOOGLE CLIENT ID is Mandatory',
   }),
+  googleClientSecret: z.string({
+    required_error: 'GOOGLE CLIENT SECRET is Mandatory',
+  }),
   appEmail: z.string(),
   appEmailPassword: z.string(),
   allowedOrigins: z.array(z.string(), {
