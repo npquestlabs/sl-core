@@ -39,7 +39,7 @@ export const loginUser = async (
 
   const accessToken = generateToken(sanitizedUser, options)
 
-  return { user: sanitizedUser, tokens: { access: accessToken } }
+  return { message: 'Logged in successfully', tokens: { access: accessToken } }
 }
 
 export const loginWithEmail = async (
@@ -74,5 +74,5 @@ export const loginWithEmail = async (
 
   const accessToken = generateToken(sanitizedUser, options)
 
-  return { user: sanitizedUser, tokens: { access: accessToken } }
+  return { message: 'Logged in successfully', tokens: { access: accessToken } }
 }

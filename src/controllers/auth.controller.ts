@@ -15,6 +15,7 @@ import { z } from 'zod'
 import { createOtp, getValidOtp, markOtpUsed } from '../services/otp.service'
 import { logger } from '../configs/logger'
 import googleAuthConfig from '../configs/google'
+import { TokenSchema } from '../schemas/extras.schema'
 
 // Stage One: Accept email, send OTP
 export const registerStageOne = async (req: Request, res: Response) => {
@@ -124,73 +125,123 @@ export const updatePassword = async (req: Request, res: Response) => {
 }
 
 export const googleAuth = async (req: Request, res: Response) => {
-  const { token } = req.body;
-  if (!token) {
-    return res.status(400).json({ error: 'Token is required' });
-  }
-  const console = req.headers['x-client'] as 'staff' | 'tenant' | 'vendor';
+  const { token: code } = req.body as z.infer<typeof TokenSchema>
+  const console = req.headers['x-client'] as 'staff' | 'tenant' | 'vendor'
+
+  // Middleware guarentees that origin is allowed so client will be non-null
+  const client = googleAuthConfig.getClient(String(req.get('origin')))!
+
   if (!console) {
-    return res.status(400).json({ error: 'x-client header is required' });
+    return res.status(400).json({ error: 'x-client header is required' })
   }
 
   try {
-    // Verify the ID token with Google
-    const ticket = await googleAuthConfig.verifyIdToken(token);
+    const { tokens } = await client.getToken(code)
+    const idToken = tokens.id_token
 
-    const payload = ticket.getPayload();
+    if (!idToken) {
+      throw new AppError('Failed to retrieve ID token from Google', 401)
+    }
+
+    // Verify the ID token to get user details
+    const ticket = await client.verifyIdToken(idToken)
+
+    const payload = ticket.getPayload()
 
     if (!payload) {
-      return res.status(401).json({ message: 'Invalid Google token.' });
+      return res.status(401).json({ error: 'Invalid Google token.' })
     }
 
-    const { email, name, picture: avatarUrl } = payload;
+    const { email, name, picture: avatarUrl } = payload
 
     if (!email) {
-      return res.status(400).json({ error: 'Email not available from Google' });
+      return res.status(400).json({ error: 'Email not available from Google' })
     }
 
-    const user = await userService.getUserByEmail(email, { avatarUrl: true, password: true }, {});
-    let result;
+    const user = await userService.getUserByEmail(email, {
+      avatarUrl: true,
+      password: true,
+    })
+
     if (user) {
-      result = authService.loginWithEmail(email, console);
-    } else {
-      const nameParts = name ? name.split(' ') : [];
-      const firstName = nameParts[0];
-      const lastName = nameParts[nameParts.length - 1];
-      const middleName = nameParts.slice(1, -1).join(' ') || undefined;
+      const result = await authService.loginWithEmail(email, console)
+      if (!result) {
+        res.status(500).json({ error: 'Failed to log in user' })
+      }
+      return res.status(200).json(result)
+    }
 
-      const newUserInput = OAuthUserSchema.parse({
+    const nameParts = name ? name.split(' ') : []
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''
+    const middleName = nameParts.slice(1, -1).join(' ') || undefined
+
+    const newUserInput = OAuthUserSchema.parse({
+      email,
+      avatarUrl,
+      [console]: {
+        firstName,
+        lastName,
+        middleName,
+      },
+    })
+
+    const token = generateToken(newUserInput, { expiresIn: '24h' })
+
+    const result = {
+      userPreview: {
         email,
-        [console]: {
-          firstName,
-          lastName,
-          middleName,
-        },
-      });
-
-      result = await userService.createUser({
-        ...newUserInput,
+        firstName,
+        lastName,
+        middleName,
         avatarUrl,
-      });
+      },
+      completionToken: token,
     }
 
-    if (!result) {
-      throw new AppError('Failed to create user', 500);
-    }
-
-    return res.status(200).json(result);
-
+    return res.status(200).json(result)
   } catch (error) {
-    logger.error('Error in googleAuth:', error);
+    logger.error('Error in googleAuth:', error)
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Failed to authenticate with Google" });
+      return res
+        .status(400)
+        .json({ error: 'Failed to authenticate with Google' })
     }
     if (error instanceof AppError) {
-      return res.status(error.statusCode).json({ error: error.message });
+      return res.status(error.statusCode).json({ error: error.message })
     }
-    return res.status(500).json({ error: 'An unexpected error occurred' });
+    return res
+      .status(500)
+      .json({
+        error: 'An unexpected error occurred during Google authentication',
+      })
   }
-};
+}
+
+export const googleAuthCompleteRegistration = async (
+  req: Request,
+  res: Response,
+) => {
+  const user = req.body as z.infer<typeof OAuthUserSchema>
+  const console = req.headers['x-client'] as 'staff' | 'tenant' | 'vendor'
+
+  if (!console) {
+    return res.status(400).json({ error: 'x-client header is required' })
+  }
+
+  try {
+    const result = await userService.createUser(user)
+    return res.status(201).json(result)
+  } catch (error) {
+    logger.error('Error in googleAuth:', error)
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.message })
+    }
+    return res
+      .status(500)
+      .json({ error: 'Error while completing registration' })
+  }
+}
 
 export const loginWithEmail = async (req: Request, res: Response) => {
   const { email } = req.body
