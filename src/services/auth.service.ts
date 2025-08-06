@@ -7,10 +7,14 @@ import config from '../configs/environment'
 import jwt from 'jsonwebtoken'
 import { prisma } from '../configs/prisma'
 
-export const loginUser = async (email: string, password: string, console: 'landlord' | 'tenant' | 'vendor' | null) => {
+export const loginUser = async (
+  email: string,
+  password: string,
+  console: 'staff' | 'tenant' | 'vendor' | null,
+) => {
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { landlord: true, tenant: true, vendor: true },
+    include: { staff: true, tenant: true, vendor: true },
   })
 
   if (
@@ -21,7 +25,10 @@ export const loginUser = async (email: string, password: string, console: 'landl
   }
 
   if (console && !user[console]) {
-    throw new AppError("Wrong dashboard, kindly visit the correct dashboard to login", 403)
+    throw new AppError(
+      'Wrong dashboard, kindly visit the correct dashboard to login',
+      403,
+    )
   }
 
   const sanitizedUser = sanitizeUser(user)
@@ -35,12 +42,15 @@ export const loginUser = async (email: string, password: string, console: 'landl
   return { user: sanitizedUser, tokens: { access: accessToken } }
 }
 
-export const loginWithEmail = async (email: string, console: 'landlord' | 'tenant' | 'vendor') => {
+export const loginWithEmail = async (
+  email: string,
+  console: 'staff' | 'tenant' | 'vendor',
+) => {
   const omit = {
     password: true,
   }
   const include = {
-    landlord: true,
+    staff: true,
     tenant: true,
     vendor: true,
   }
@@ -50,12 +60,17 @@ export const loginWithEmail = async (email: string, console: 'landlord' | 'tenan
   }
 
   if (!user[console]) {
-    throw new AppError("Wrong dashboard, kindly visit the correct dashboard to login", 403)
+    throw new AppError(
+      'Wrong dashboard, kindly visit the correct dashboard to login',
+      403,
+    )
   }
 
   const sanitizedUser = sanitizeUser(user)
 
-  const options: jwt.SignOptions = { expiresIn: '24m' }
+  const options: jwt.SignOptions = {
+    expiresIn: config.isProduction ? '24h' : '48m',
+  }
 
   const accessToken = generateToken(sanitizedUser, options)
 

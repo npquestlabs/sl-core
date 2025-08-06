@@ -7,12 +7,14 @@ import { AppError } from '../util/error'
 import { generateToken } from '../util/token'
 import envConfig from '../configs/environment'
 import {
+  OAuthUserSchema,
   RegisterStageOneSchema,
   RegisterStageTwoSchema,
 } from '../schemas/user.schema'
 import { z } from 'zod'
 import { createOtp, getValidOtp, markOtpUsed } from '../services/otp.service'
 import { logger } from '../configs/logger'
+import googleAuthConfig from '../configs/google'
 
 // Stage One: Accept email, send OTP
 export const registerStageOne = async (req: Request, res: Response) => {
@@ -121,6 +123,75 @@ export const updatePassword = async (req: Request, res: Response) => {
   return res.status(200).json({ message: 'Password updated!' })
 }
 
+export const googleAuth = async (req: Request, res: Response) => {
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required' });
+  }
+  const console = req.headers['x-client'] as 'staff' | 'tenant' | 'vendor';
+  if (!console) {
+    return res.status(400).json({ error: 'x-client header is required' });
+  }
+
+  try {
+    // Verify the ID token with Google
+    const ticket = await googleAuthConfig.verifyIdToken(token);
+
+    const payload = ticket.getPayload();
+
+    if (!payload) {
+      return res.status(401).json({ message: 'Invalid Google token.' });
+    }
+
+    const { email, name, picture: avatarUrl } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email not available from Google' });
+    }
+
+    const user = await userService.getUserByEmail(email, { avatarUrl: true, password: true }, {});
+    let result;
+    if (user) {
+      result = authService.loginWithEmail(email, console);
+    } else {
+      const nameParts = name ? name.split(' ') : [];
+      const firstName = nameParts[0];
+      const lastName = nameParts[nameParts.length - 1];
+      const middleName = nameParts.slice(1, -1).join(' ') || undefined;
+
+      const newUserInput = OAuthUserSchema.parse({
+        email,
+        [console]: {
+          firstName,
+          lastName,
+          middleName,
+        },
+      });
+
+      result = await userService.createUser({
+        ...newUserInput,
+        avatarUrl,
+      });
+    }
+
+    if (!result) {
+      throw new AppError('Failed to create user', 500);
+    }
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    logger.error('Error in googleAuth:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Failed to authenticate with Google" });
+    }
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'An unexpected error occurred' });
+  }
+};
+
 export const loginWithEmail = async (req: Request, res: Response) => {
   const { email } = req.body
   const console = req.headers['x-client'] ?? null
@@ -135,7 +206,7 @@ export const sendVerificationLink = async (req: Request, res: Response) => {
   if (!user) {
     return res.status(404).json({ error: 'User not found' })
   }
-  if (!user.landlord && !user.tenant && !user.vendor) {
+  if (!user.staff && !user.tenant && !user.vendor) {
     return res.status(403).json({ error: 'Contact support' })
   }
 
@@ -143,8 +214,8 @@ export const sendVerificationLink = async (req: Request, res: Response) => {
   const origin = String(req.get('origin'))
   await sendVerificationEmail(
     user.email,
-    user.landlord
-      ? user.landlord
+    user.staff
+      ? user.staff
       : user.tenant
         ? user.tenant
         : user.vendor

@@ -3,7 +3,7 @@
  * https://jestjs.io/docs/configuration
  */
 
-import type {Config} from 'jest';
+import type { Config } from 'jest'
 
 const config: Config = {
   preset: 'ts-jest',
@@ -34,7 +34,7 @@ const config: Config = {
   // ],
 
   // Indicates which provider should be used to instrument code for coverage
-  coverageProvider: "v8",
+  coverageProvider: 'v8',
 
   // A list of reporter names that Jest uses when writing coverage reports
   // coverageReporters: [
@@ -66,7 +66,7 @@ const config: Config = {
 
   // A path to a module which exports an async function that is triggered once after all test suites
   // globalTeardown: undefined,
-  
+
   globalSetup: './tests/setup.ts',
   globalTeardown: './tests/teardown.ts',
 
@@ -201,6 +201,6 @@ const config: Config = {
   // Whether to use watchman for file crawling
   // watchman: true,
   testTimeout: 20000,
-};
+}
 
-export default config;
+export default config

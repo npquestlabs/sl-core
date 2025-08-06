@@ -7,18 +7,17 @@ import {
   UpdateMaintenanceRequestInput,
   VendorResponseInput,
 } from '../schemas/maintenance.schema'
-import { LocalUser } from '../types'
 import { AppError } from '../util/error'
 import { Prisma } from '../../generated/prisma'
 
 export const createMaintenanceRequest = async (
-  creator: LocalUser,
+  userId: string,
   unitId: string,
   data: CreateMaintenanceRequestInput,
 ) => {
   const request = await prisma.maintenanceRequest.create({
     data: {
-      creatorId: creator.id,
+      creatorId: userId,
       ...data,
       unitId,
     },
@@ -27,8 +26,8 @@ export const createMaintenanceRequest = async (
   return request
 }
 
-export const listMaintenanceRequestsOfLandlord = async (
-  landlordId: string,
+export const listMaintenanceRequestsOfStaff = async (
+  staffId: string,
   pagination: z.infer<typeof PaginationSchema>,
 ) => {
   const { limit, page, order } = pagination
@@ -38,7 +37,11 @@ export const listMaintenanceRequestsOfLandlord = async (
       deletedAt: null,
       unit: {
         complex: {
-          landlordId,
+          assignments: {
+            some: {
+              staffId,
+            },
+          },
         },
       },
     },

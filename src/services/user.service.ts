@@ -2,25 +2,27 @@ import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import { AppError, ServerError } from '../util/error'
 import { z } from 'zod'
-import { RegisterUserSchema, UpdateUserSchema } from '../schemas/user.schema'
+import { BaseUserSchema, UpdateUserSchema } from '../schemas/user.schema'
 import { Prisma } from '../../generated/prisma'
 import { sanitizeUser } from '../util'
 import { generateToken } from '../util/token'
 import config from '../configs/environment'
 import jwt from 'jsonwebtoken'
 
-export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
-  data.password = await bcrypt.hash(data.password, 10)
-  const { landlord, tenant, vendor, ...userData } = data
+export const createUser = async (data: z.infer<typeof BaseUserSchema>) => {
+  if (data.password) {
+    data.password = await bcrypt.hash(data.password, 10)
+  }
+  const { staff, tenant, vendor, ...userData } = data
 
   const createdUser = await prisma.user.create({
     data: {
       ...userData,
 
-      landlord: {
-        ...(landlord && {
+      staff: {
+        ...(staff && {
           create: {
-            ...landlord,
+            ...staff,
           },
         }),
       },
@@ -43,7 +45,7 @@ export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
       password: true,
     },
     include: {
-      landlord: true,
+      staff: true,
       tenant: true,
       vendor: true,
     },
@@ -88,7 +90,7 @@ export const getUserWithPopulatedData = async (id: string) => {
       password: true,
     },
     include: {
-      landlord: {
+      staff: {
         omit: {
           userId: true,
         },

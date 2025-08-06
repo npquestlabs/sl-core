@@ -32,17 +32,17 @@ app.use(
   swaggerConfig.swaggerUi.setup(swaggerConfig.swaggerSpec),
 )
 
-// Bounce non-allowed requests
-if (envConfig.isProduction) app.use(bouncer)
-
 // Add CORS headers
 app.use(
   cors({
     origin: envConfig.allowedOrigins,
     methods: ['OPTIONS', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Client'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-client'],
   }),
 )
+
+// Bounce non-allowed requests
+if (envConfig.isProduction) app.use(bouncer)
 
 // Rate limiting middleware
 app.use(limiterConfig)

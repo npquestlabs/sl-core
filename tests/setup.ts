@@ -10,7 +10,6 @@ const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
 export default async () => {
   console.log('\n Jest Global Setup: Starting...')
   try {
-
     if (!isCI) {
       const envFile = path.resolve(process.cwd(), '.env.testing')
       if (!fs.existsSync(envFile)) {
@@ -24,7 +23,7 @@ export default async () => {
       console.log('ℹ️  Running in CI: skipping .env.testing check.')
     }
     console.log('Jest Global Setup: Environment variables loaded.')
-    
+
     await Promise.all([
       connectPrisma(),
       // connectEmail(),

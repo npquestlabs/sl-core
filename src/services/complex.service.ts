@@ -4,23 +4,35 @@ import {
   UpdateComplexSchema,
 } from '../schemas/complex.schema'
 import { prisma } from '../configs/prisma'
-import { AppError, NotFoundError } from '../util/error'
+import { NotFoundError } from '../util/error'
 import { PaginationSchema } from '../schemas/extras.schema'
 import { PaginatedResponse } from '../types'
-import { Prisma } from '../../generated/prisma'
+import { Prisma, StaffRole } from '../../generated/prisma'
+import { CreatedComplex, DetailedComplex, ListedComplex } from '../types/out'
 
 export async function createComplex(
-  landlordId: string,
+  staffId: string,
   data: z.infer<typeof CreateComplexSchema>,
-) {
+): Promise<CreatedComplex> {
   const createdComplex = await prisma.complex.create({
     data: {
       ...data,
-      landlordId,
+      assignments: {
+        create: {
+          staffId,
+          role: StaffRole.SUPERADMIN,
+        },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      createdAt: true,
+      updatedAt: true,
     },
   })
 
-  return createdComplex ?? null
+  return createdComplex
 }
 
 export async function updateComplex(
@@ -63,42 +75,150 @@ export async function getComplex(
   return complex ?? null
 }
 
-export async function getComplexesOfLandlord(
-  landlordId: string,
+export async function getStaffComplexes(
+  staffId: string,
   pagination: z.infer<typeof PaginationSchema>,
-): Promise<PaginatedResponse<Prisma.ComplexGetPayload<Record<string, never>>>> {
+): Promise<PaginatedResponse<ListedComplex>> {
   const { page, limit, filter } = pagination
 
   const whereClause: Prisma.ComplexWhereInput = {
-    landlordId: landlordId,
     deletedAt: null,
+    assignments: {
+      some: {
+        staffId: staffId,
+      },
+    },
   }
 
   if (filter) {
     whereClause.OR = [
       { name: { contains: filter, mode: 'insensitive' } },
       { description: { contains: filter, mode: 'insensitive' } },
+      { cityName: { contains: filter, mode: 'insensitive' } },
+      { address: { contains: filter, mode: 'insensitive' } },
     ]
   }
 
-  const total = await prisma.complex.count({
-    where: whereClause,
-  })
+  const [total, complexes] = await prisma.$transaction([
+    prisma.complex.count({ where: whereClause }),
+    prisma.complex.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        cityName: true,
+        countryCode: true,
+        address: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            units: true,
+            assignments: true,
+          },
+        },
+      },
+      take: limit,
+      skip: (page - 1) * limit,
+    }),
+  ])
 
-  const complexes = await prisma.complex.findMany({
-    where: whereClause,
-    skip: (page - 1) * limit,
-    take: limit,
-    orderBy: {
-      createdAt: 'desc',
+  return { data: complexes, meta: { limit, page, total } }
+}
+
+/**
+ * Fetches detailed information for a specific complex, including a paginated list of its units.
+ *
+ * @param id - The ID of the complex to retrieve.
+ * @param query - An object containing query parameters, e.g., for paginating nested units.
+ * @returns A promise that resolves to the detailed complex object or null if not found.
+ */
+export async function getDetailedComplex(
+  id: string,
+  where: Prisma.ComplexWhereInput = {},
+): Promise<DetailedComplex | null> {
+  const unitsLimit = 3
+
+  const complex = await prisma.complex.findUnique({
+    where: { ...where, id: id, deletedAt: null },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      notes: true,
+      countryCode: true,
+      cityName: true,
+      address: true,
+      createdAt: true,
+      updatedAt: true,
+      _count: {
+        select: {
+          units: true,
+          assignments: true,
+        },
+      },
+      units: {
+        where: { deletedAt: null },
+        take: unitsLimit,
+        select: {
+          id: true,
+          label: true,
+          type: true,
+          rentAmount: true,
+          rentCurrency: true,
+          complex: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          leases: {
+            orderBy: { startedAt: 'desc' },
+            take: 1,
+            select: { status: true },
+          },
+          _count: {
+            select: { maintenanceRequests: true },
+          },
+        },
+      },
+      assignments: {
+        select: {
+          role: true,
+          staff: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              user: {
+                select: { avatarUrl: true },
+              },
+            },
+          },
+        },
+      },
     },
   })
 
-  if (!complexes) {
-    throw new AppError('An error occurred')
+  if (!complex) {
+    return null
   }
 
-  return { data: complexes, meta: { limit, page, total } }
+  const formattedUnits = complex.units.map((unit) => ({
+    id: unit.id,
+    label: unit.label,
+    type: unit.type,
+    rentAmount: unit.rentAmount ? unit.rentAmount.toString() : null,
+    rentCurrency: unit.rentCurrency,
+    complex: unit.complex,
+    leaseStatus: unit.leases.length > 0 ? unit.leases[0].status : null,
+    _count: {
+      maintenanceRequests: unit._count.maintenanceRequests,
+    },
+  }))
+
+  return { ...complex, units: formattedUnits }
 }
 
 export async function countComplexes(where: Prisma.ComplexWhereInput = {}) {
