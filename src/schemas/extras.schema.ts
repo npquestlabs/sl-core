@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { RegisterUserSchema } from './user.schema'
 
 export const PaginationSchema = z.object({
   limit: z
@@ -36,12 +35,11 @@ export const AuthTokensSchema = z.object({
   access: z.string(),
 })
 
-// TODO: revisit
-export const AuthSuccessResponseSchema = z.object({
-  user: RegisterUserSchema,
-  tokens: AuthTokensSchema,
-})
-
 export const MessageResponseSchema = z.object({
   message: z.string(),
+})
+
+export const AuthSuccessResponseSchema = z.object({
+  ...MessageResponseSchema.shape,
+  tokens: AuthTokensSchema,
 })
