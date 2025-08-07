@@ -1,0 +1,374 @@
+openapi: 3.0.0
+info:
+  title: Units API
+  version: 1.0.0
+  description: API for managing individual units within complexes. Access is role-based, available to Staff and Tenants with specific permissions.
+tags:
+  - name: Units
+    description: Endpoints for retrieving and managing units.
+paths:
+  /units:
+    get:
+      tags:
+        - Units
+      summary: Get All Units for Staff
+      description: Retrieves a paginated list of all units associated with the complexes the authenticated staff member manages.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: The page number to retrieve.
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: The number of items to return per page.
+          schema:
+            type: integer
+            default: 15
+        - name: filter
+          in: query
+          description: A search term to filter units by label, description, or the name of the complex they belong to.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A paginated list of units with summarized details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedListedUnits'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The authenticated user is not a staff member.
+
+  /units/{unitId}:
+    get:
+      tags:
+        - Units
+      summary: Get Unit by ID
+      description: >
+        Retrieves detailed information for a specific unit. Access is granted to:
+        - A staff member who is assigned to the unit's parent complex.
+        - A tenant who has an active lease on the unit.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          description: The unique identifier of the unit.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detailed information about the unit, including its complex and active lease details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedUnit'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The authenticated user is not a staff member or a tenant.
+        '404':
+          description: The unit was not found or the user does not have permission to view it.
+
+    patch:
+      tags:
+        - Units
+      summary: Update a Unit
+      description: >
+        Updates the details of a specific unit. This action is restricted to staff members who are assigned to the unit's parent complex.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          description: The unique identifier of the unit to update.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUnit'
+      responses:
+        '200':
+          description: The unit was updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The user is not a staff member.
+        '404':
+          description: The unit was not found or the user does not have permission to update it.
+
+    delete:
+      tags:
+        - Units
+      summary: Delete a Unit
+      description: >
+        Soft-deletes a unit by setting its `deletedAt` timestamp. This action is restricted to staff members who have an ADMIN or SUPERADMIN role within the unit's parent complex.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          description: The unique identifier of the unit to delete.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The unit was successfully marked as deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteSuccessResponse'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The user is not an ADMIN or SUPERADMIN for the unit's complex.
+        '404':
+          description: The unit was not found or the user does not have permission to delete it.
+
+components:
+  schemas:
+    Unit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        complexId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        type:
+          $ref: '#/components/schemas/UnitType'
+        description:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        rentAmount:
+          type: number
+          format: decimal
+        rentCurrency:
+          type: string
+        rentDuration:
+          type: integer
+        rentUnit:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    UpdateUnit:
+      type: object
+      description: At least one field must be provided for an update.
+      properties:
+        type:
+          $ref: '#/components/schemas/UnitType'
+        label:
+          type: string
+        description:
+          type: string
+        notes:
+          type: string
+        rentAmount:
+          type: number
+        rentCurrency:
+          type: string
+        rentAdvance:
+          type: integer
+        rentDuration:
+          type: integer
+
+    ListedUnit:
+      type: object
+      description: A summarized view of a unit, returned in lists for staff.
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        type:
+          $ref: '#/components/schemas/UnitType'
+        rentAmount:
+          type: string
+          nullable: true
+        rentCurrency:
+          type: string
+          nullable: true
+        complex:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        leaseStatus:
+          $ref: '#/components/schemas/LeaseStatus'
+        _count:
+          type: object
+          properties:
+            maintenanceRequests:
+              type: integer
+
+    DetailedUnit:
+      type: object
+      description: A comprehensive view of a unit, including its complex and active lease details.
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        type:
+          $ref: '#/components/schemas/UnitType'
+        description:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        rentAmount:
+          type: string
+          nullable: true
+        rentCurrency:
+          type: string
+          nullable: true
+        rentDuration:
+          type: integer
+          nullable: true
+        rentUnit:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        complex:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            address:
+              type: string
+              nullable: true
+        activeLease:
+          $ref: '#/components/schemas/ActiveLease'
+
+    ActiveLease:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/LeaseStatus'
+        tenant:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            firstName:
+              type: string
+            lastName:
+              type: string
+            email:
+              type: string
+              format: email
+              nullable: true
+            phone:
+              type: string
+              nullable: true
+            user:
+              type: object
+              properties:
+                avatarUrl:
+                  type: string
+                  format: uri
+                  nullable: true
+
+    DeleteSuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Unit deleted successfully
+        id:
+          type: string
+          format: uuid
+
+    UnitType:
+      type: string
+      enum: [ROOM, STUDIO, APARTAMENT, HOUSE]
+      
+    LeaseStatus:
+      type: string
+      enum: [ACTIVE, PENDING, TERMINATED, EXPIRED, RENEWED]
+      nullable: true
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+
+    PaginatedListedUnits:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListedUnit'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

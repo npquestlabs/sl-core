@@ -1,0 +1,522 @@
+openapi: 3.0.0
+info:
+  title: Auth API
+  version: 1.0.0
+  description: API for user authentication and management, including registration, login, password management, and OAuth.
+tags:
+  - name: Auth
+    description: Authentication and user management endpoints
+paths:
+  /auth/register/stage-one:
+    post:
+      tags:
+        - Auth
+      summary: Register - Stage 1 (Email Verification)
+      description: Takes a user's email and registration details. If the email is not already in use, it sends a one-time verification code (OTP) to the provided email address to verify ownership.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterStageOne'
+      responses:
+        '201':
+          description: Verification code was successfully sent to the user's email.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Verification code sent to email.
+                  otp:
+                    type: string
+                    description: The OTP code. This is ONLY returned in non-production environments for testing purposes.
+                    example: '123456'
+        '400':
+          description: Bad request, either due to a validation error or because the email already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/register/stage-two:
+    post:
+      tags:
+        - Auth
+      summary: Register - Stage 2 (Complete Registration)
+      description: Verifies the OTP sent in Stage 1 and creates the user account with the provided details. On success, it returns authentication tokens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterStageTwo'
+      responses:
+        '200':
+          description: User account created and verified successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: The provided OTP is invalid or has expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: An internal error occurred while creating the user account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/register/resend-verification:
+    post:
+      tags:
+        - Auth
+      summary: Resend Verification Code
+      description: Generates and sends a new one-time verification code (OTP) to the user's email address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '201':
+          description: A new verification code has been sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid email format.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: User Login
+      description: Authenticates a user with their email and password. A client identifier must be provided in the headers to ensure the user has the correct role for the dashboard they are accessing.
+      parameters:
+        - $ref: '#/components/parameters/XClientHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+      responses:
+        '200':
+          description: Login was successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '401':
+          description: Invalid credentials (wrong email or password).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Access forbidden. The user does not have the required role (e.g., a tenant trying to log into the staff dashboard).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/google:
+    post:
+      tags:
+        - Auth
+      summary: Google OAuth
+      description: Handles Google authentication. The client sends a Google auth code, and the server exchanges it for user info. If the user exists, they are logged in. If not, a completion token is returned for the registration to be finalized.
+      parameters:
+        - $ref: '#/components/parameters/XClientHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Token'
+      responses:
+        '200':
+          description: Google authentication successful. The response will vary depending on whether the user is already registered.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AuthSuccessResponse'
+                  - $ref: '#/components/schemas/GoogleAuthPendingResponse'
+        '400':
+          description: The 'x-client' header is missing or other validation error.
+        '401':
+          description: The provided Google token is invalid or has expired.
+
+  /auth/google/register:
+    post:
+      tags:
+        - Auth
+      summary: Complete Google OAuth Registration
+      description: Creates a new user account using the details obtained from Google, provided in a secure token from the `/auth/google` endpoint.
+      parameters:
+        - $ref: '#/components/parameters/XClientHeader'
+      requestBody:
+        description: A JWT (`completionToken`) received from the `/auth/google` endpoint.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Token'
+      responses:
+        '201':
+          description: User successfully registered via Google OAuth.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: The 'x-client' header is missing or the token is invalid.
+        '500':
+          description: An internal error occurred while creating the user.
+
+  /auth/forgot-password:
+    post:
+      tags:
+        - Auth
+      summary: Forgot Password
+      description: Initiates the password reset process. If a user exists with the given email, a magic login link for password reset is sent to their email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Email'
+      responses:
+        '200':
+          description: Password reset instructions sent. The response is the same whether the user exists or not to prevent email enumeration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  emailToken:
+                    type: string
+                    description: The magic link token. This is ONLY returned in non-production environments for testing.
+        '404':
+          description: User with the provided email not found.
+
+  /auth/reset-password:
+    post:
+      tags:
+        - Auth
+      summary: Reset Password
+      description: Allows an authenticated user to set a new password. The user must be authenticated via a Bearer token, typically obtained from a magic link login (`/auth/verifications/use`).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Password'
+      responses:
+        '200':
+          description: Password has been successfully updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Validation error, e.g., new password is the same as the old one.
+        '401':
+          description: Unauthorized. The request is missing a valid authentication token.
+        '500':
+          description: An internal error occurred while updating the password.
+
+  /auth/verifications/use:
+    post:
+      tags:
+        - Auth
+      summary: Login with Magic Link
+      description: Logs in a user using a secure token, typically sent to their email via the 'Forgot Password' flow. This provides a session to allow for password reset.
+      parameters:
+        - $ref: '#/components/parameters/XClientHeader'
+      requestBody:
+        description: A JWT received from an email link. The user's email is encoded within this token.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Token'
+      responses:
+        '200':
+          description: Login successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: The provided token is invalid or expired.
+        '403':
+          description: Access forbidden if the user does not have the required role for the specified 'x-client'.
+        '404':
+          description: User not found.
+
+  /auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Get Current User Profile
+      description: Retrieves the complete profile of the currently authenticated user, including their role-specific details (Staff, Tenant, or Vendor) and base user information.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The authenticated user's full profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FullProfileResponse'
+        '401':
+          description: Unauthorized. The request is missing a valid authentication token.
+
+components:
+  schemas:
+    Login:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+
+    RegisterStageOne:
+      type: object
+      required:
+        - email
+        - user
+      properties:
+        email:
+          type: string
+          format: email
+        user:
+          $ref: '#/components/schemas/RegisterUser'
+
+    RegisterStageTwo:
+      type: object
+      required:
+        - otp
+        - user
+      properties:
+        otp:
+          type: string
+          minLength: 4
+          description: The one-time password received via email.
+        user:
+          $ref: '#/components/schemas/RegisterUser'
+
+    RegisterUser:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        staff:
+          $ref: '#/components/schemas/RegisterStaff'
+        tenant:
+          $ref: '#/components/schemas/RegisterTenant'
+        vendor:
+          $ref: '#/components/schemas/RegisterVendor'
+      description: "User registration details. Exactly one of `staff`, `tenant`, or `vendor` must be provided."
+
+    RegisterStaff:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+          nullable: true
+
+    RegisterTenant:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+          nullable: true
+
+    RegisterVendor:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+          nullable: true
+        specialty:
+          type: string
+          nullable: true
+
+    Email:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+
+    Password:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          minLength: 6
+
+    Token:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: A JSON Web Token (JWT).
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        tokens:
+          type: object
+          properties:
+            access:
+              type: string
+              description: JWT access token for authenticating subsequent requests.
+
+    GoogleAuthPendingResponse:
+      type: object
+      description: Response for a new user authenticating with Google. This token must be sent to the `/auth/google/register` endpoint to finalize account creation.
+      properties:
+        userPreview:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+            firstName:
+              type: string
+            lastName:
+              type: string
+            middleName:
+              type: string
+              nullable: true
+            avatarUrl:
+              type: string
+              format: uri
+              nullable: true
+        completionToken:
+          type: string
+          description: A short-lived token to complete the registration process.
+
+    FullProfileResponse:
+      type: object
+      description: A comprehensive view of the user's profile, combining role-specific information with base user data.
+      properties:
+        id:
+          type: string
+          description: Role-specific ID (e.g., Staff ID, Tenant ID).
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+          description: Role-specific email, if applicable.
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: The core user account ID.
+            email:
+              type: string
+              format: email
+              description: The core user account login email.
+            avatarUrl:
+              type: string
+              format: uri
+              nullable: true
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+
+  parameters:
+    XClientHeader:
+      name: x-client
+      in: header
+      required: true
+      description: Specifies the client application or dashboard making the request.
+      schema:
+        type: string
+        enum: [staff, tenant, vendor]
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
