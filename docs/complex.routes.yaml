@@ -1,0 +1,467 @@
+openapi: 3.0.0
+info:
+  title: Complexes API
+  version: 1.0.0
+  description: API for managing property complexes and their associated units. Access is restricted to authenticated staff members.
+tags:
+  - name: Complexes
+    description: Endpoints for creating, retrieving, updating, and deleting complexes and their units.
+paths:
+  /complexes:
+    get:
+      tags:
+        - Complexes
+      summary: Get Staff Complexes
+      description: Retrieves a paginated list of all complexes associated with the currently authenticated staff member.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: The page number to retrieve.
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: The number of items to return per page.
+          schema:
+            type: integer
+            default: 15
+        - name: filter
+          in: query
+          description: A search term to filter complexes by name or address.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A paginated list of the staff member's complexes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedComplexes'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The authenticated user is not a staff member.
+
+    post:
+      tags:
+        - Complexes
+      summary: Create New Complex
+      description: Creates a new complex and assigns the currently authenticated staff member as its SUPERADMIN.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateComplex'
+      responses:
+        '201':
+          description: The complex was created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Complex'
+        '400':
+          description: Bad request due to validation errors in the request body.
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The authenticated user is not a staff member.
+        '500':
+          description: An internal error occurred while creating the complex.
+
+  /complexes/{complexId}:
+    get:
+      tags:
+        - Complexes
+      summary: Get Complex by ID
+      description: Retrieves the detailed information for a specific complex, provided the authenticated staff member is assigned to it.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: complexId
+          in: path
+          required: true
+          description: The unique identifier of the complex.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detailed information about the complex.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Complex'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The user is not a staff member or is not assigned to this complex.
+        '404':
+          description: The requested complex was not found.
+
+    patch:
+      tags:
+        - Complexes
+      summary: Update a Complex
+      description: Updates the details of a specific complex. This action is restricted to staff members who have an ADMIN or SUPERADMIN role for that complex.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: complexId
+          in: path
+          required: true
+          description: The unique identifier of the complex to update.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateComplex'
+      responses:
+        '200':
+          description: The complex was updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Complex'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The user is not an ADMIN or SUPERADMIN for this complex.
+        '404':
+          description: The requested complex was not found.
+        '500':
+          description: An internal error occurred while updating the complex.
+
+    delete:
+      tags:
+        - Complexes
+      summary: Delete a Complex
+      description: Deletes a specific complex. This action is restricted to staff members who have the SUPERADMIN role for that complex.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: complexId
+          in: path
+          required: true
+          description: The unique identifier of the complex to delete.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The complex was deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Complex'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The user is not the SUPERADMIN for this complex.
+        '404':
+          description: The requested complex was not found.
+
+  /complexes/{complexId}/units:
+    get:
+      tags:
+        - Complexes
+      summary: Get Units in a Complex
+      description: Retrieves a paginated list of all units within a specific complex. The user must be a staff member assigned to the complex.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: complexId
+          in: path
+          required: true
+          description: The unique identifier of the complex.
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          description: The page number to retrieve.
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: The number of items to return per page.
+          schema:
+            type: integer
+            default: 15
+        - name: filter
+          in: query
+          description: A search term to filter units by their label or description.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A paginated list of units.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUnits'
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Forbidden.
+        '404':
+          description: Complex not found.
+
+    post:
+      tags:
+        - Complexes
+      summary: Create a Unit in a Complex
+      description: Creates a new unit within a specific complex. The user must be a staff member assigned to the complex.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: complexId
+          in: path
+          required: true
+          description: The unique identifier of the complex where the unit will be created.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUnit'
+      responses:
+        '201':
+          description: The unit was created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+        '400':
+          description: Bad request due to validation errors.
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Forbidden.
+        '404':
+          description: Complex not found.
+
+  /complexes/{complexId}/units/{unitId}:
+    get:
+      tags:
+        - Complexes
+      summary: Get Unit by ID
+      description: Retrieves the details of a specific unit within a complex. The user must be a staff member assigned to the complex.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: complexId
+          in: path
+          required: true
+          description: The unique identifier of the complex.
+          schema:
+            type: string
+            format: uuid
+        - name: unitId
+          in: path
+          required: true
+          description: The unique identifier of the unit.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detailed information for the specified unit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Forbidden.
+        '404':
+          description: Unit or Complex not found.
+
+components:
+  schemas:
+    Complex:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        countryCode:
+          type: string
+          example: GHA
+        cityName:
+          type: string
+        address:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    Unit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        complexId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        type:
+          $ref: '#/components/schemas/UnitType'
+        description:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        rentAmount:
+          type: number
+          format: decimal
+        rentCurrency:
+          type: string
+        rentDuration:
+          type: integer
+        rentUnit:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          
+    CreateComplex:
+      type: object
+      required:
+        - name
+        - countryCode
+        - cityName
+      properties:
+        name:
+          type: string
+        countryCode:
+          type: string
+        cityName:
+          type: string
+        address:
+          type: string
+        description:
+          type: string
+        notes:
+          type: string
+
+    UpdateComplex:
+      type: object
+      properties:
+        name:
+          type: string
+        countryCode:
+          type: string
+        cityName:
+          type: string
+        address:
+          type: string
+        description:
+          type: string
+        notes:
+          type: string
+
+    CreateUnit:
+      type: object
+      required:
+        - label
+      properties:
+        label:
+          type: string
+        type:
+          $ref: '#/components/schemas/UnitType'
+        description:
+          type: string
+        notes:
+          type: string
+        rentAmount:
+          type: number
+          format: decimal
+        rentCurrency:
+          type: string
+          default: "GHS"
+        rentDuration:
+          type: integer
+        rentUnit:
+          type: string
+          enum: [DAY, WEEK, MONTH, YEAR]
+
+    UnitType:
+      type: string
+      enum: [ROOM, STUDIO, APARTMENT, HOUSE]
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+
+    PaginatedComplexes:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Complex'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    PaginatedUnits:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Unit'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

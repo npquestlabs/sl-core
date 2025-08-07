@@ -1,0 +1,238 @@
+paths:
+  /staff/me:
+    get:
+      summary: Get current staff profile
+      description: Retrieves the detailed profile of the currently authenticated staff user, including their associated user information.
+      tags:
+        - Staff
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The authenticated staff user's profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffProfile'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The authenticated user is not a staff member.
+        '500':
+          description: Internal server error.
+
+    patch:
+      summary: Update staff profile
+      description: Updates the profile details for the currently authenticated staff user. Only the fields provided in the request body will be updated.
+      tags:
+        - Staff
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStaff'
+      responses:
+        '200':
+          description: Staff profile updated successfully. Returns the updated staff profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+        '400':
+          description: Bad Request. The request body contains invalid data.
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The authenticated user is not a staff member.
+        '500':
+          description: Internal server error.
+
+  /staff/summary:
+    get:
+      summary: Get staff dashboard summary
+      description: Retrieves a summary of key metrics for the authenticated staff member, including counts of their managed complexes, units, active tenants, and pending maintenance requests.
+      tags:
+        - Staff
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A summary of key metrics for the staff member.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffSummary'
+        '401':
+          description: Unauthorized. The user is not authenticated.
+        '403':
+          description: Forbidden. The authenticated user is not a staff member.
+        '500':
+          description: Internal server error.
+
+components:
+  schemas:
+    StaffProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier for the staff profile.
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        proofOfOwnership:
+          type: string
+          format: uri
+          nullable: true
+        bankName:
+          type: string
+          nullable: true
+        bankAccount:
+          type: string
+          nullable: true
+        idType:
+          type: string
+          enum: [VOTER_ID, PASSPORT, DRIVER_LICENSE, GH_CARD]
+          nullable: true
+        idNumber:
+          type: string
+          nullable: true
+        idFrontUrl:
+          type: string
+          format: uri
+          nullable: true
+        idBackUrl:
+          type: string
+          format: uri
+          nullable: true
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+              format: email
+            avatarUrl:
+              type: string
+              format: uri
+              nullable: true
+
+    StaffSummary:
+      type: object
+      properties:
+        totalComplexes:
+          type: integer
+          description: The total number of complexes managed by the staff member.
+        totalUnits:
+          type: integer
+          description: The total number of units within the managed complexes.
+        activeTenants:
+          type: integer
+          description: The number of tenants with an active lease in the managed units.
+        unitsWithExpiredLeases:
+          type: integer
+          description: The number of units with expired leases.
+        pendingMaintenanceRequests:
+          type: integer
+          description: The number of maintenance requests with a 'PENDING' status.
+
+    UpdateStaff:
+      type: object
+      description: Fields available for updating a staff profile.
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+          nullable: true
+        phone:
+          type: string
+        proofOfOwnership:
+          type: string
+          format: uri
+          nullable: true
+        bankName:
+          type: string
+          nullable: true
+        bankAccount:
+          type: string
+          nullable: true
+        mobileMoneyNumber:
+          type: string
+          nullable: true
+        idType:
+          type: string
+          enum: [VOTER_ID, PASSPORT, DRIVER_LICENSE, GH_CARD]
+          nullable: true
+        idNumber:
+          type: string
+          nullable: true
+        idFrontUrl:
+          type: string
+          format: uri
+          nullable: true
+        idBackUrl:
+          type: string
+          format: uri
+          nullable: true
+
+    Staff:
+      type: object
+      description: Represents a staff profile record from the database.
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        proofOfOwnership:
+          type: string
+          format: uri
+          nullable: true
+        bankName:
+          type: string
+          nullable: true
+        bankAccount:
+          type: string
+          nullable: true
+        mobileMoneyNumber:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        userId:
+          type: string
+          format: uuid
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -148,7 +148,7 @@ export const openApiDoc = createDocument({
 
 const options = {
   definition: openApiDoc,
-  apis: ['src/routes/*.ts'],
+  apis: ['docs/**/*.yaml'],
 }
 const swaggerSpec = swaggerJsdoc(options)
 
