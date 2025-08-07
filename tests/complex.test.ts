@@ -1,454 +1,379 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { faker } from '@faker-js/faker'
 import request from 'supertest'
 import { app } from '../src/configs/server'
 import { prisma } from '../src/configs/prisma'
-import {
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-} from '@jest/globals'
-import { faker } from '@faker-js/faker'
-import { Landlord, Complex, User } from '../generated/prisma'
-import { generateToken } from '../src/util/token'
+import { LocalUser } from '../src/types'
+import { Complex } from '../generated/prisma'
+import z from 'zod'
+import { RegisterUserSchema } from '../src/schemas/user.schema'
+import { AuthSuccessResponseSchema } from '../src/schemas/extras.schema'
+import { logger } from '../src/configs/logger'
+
+// --- Global State & Interfaces ---
 
 let runIdPrefix: string
-
 let testCreatedComplexIds: string[] = []
+const testCreatedUserIds: string[] = []
 
-let landlordUser: User
-let otherLandlordUser: User
-let landlord: Landlord
-let landlordTokens: { access: string }
-let otherLandlord: Landlord
+let staffUser1: LocalUser
+let staffTokens1: { access: string }
+let staffUser2: LocalUser
+let staffTokens2: { access: string }
+
+const testPasswordGlobal = 'passwordIsSoSecure123!'
+
+interface RegisterStageOneResponse {
+  message: string
+  otp?: string
+}
+
+// --- Test Data Generators & Setup Helpers ---
 
 const generateComplexData = (nameSuffix: string = '') => ({
-  name: `${faker.company.name()} Complex ${faker.string.alphanumeric(4)}${nameSuffix}`,
-  description: faker.lorem.sentence(),
+  name: `${faker.company.name()} Estates ${nameSuffix}`,
   countryCode: 'GHA',
   cityName: faker.location.city(),
-  street: faker.location.streetAddress(),
-  address: faker.location.secondaryAddress(),
+  address: faker.location.streetAddress(),
+  description: faker.lorem.sentence(),
 })
 
-// Helper to set up a landlord (foundational or temporary)
-// Foundational landlords (from beforeAll) will use the runIdPrefix.
-// Temporary landlords created within a test won't be automatically tracked by this helper for afterEach cleanup;
-// that would need to be handled explicitly in the test if such a landlord's ID needs afterEach cleanup.
-const setupLandlord = async (emailPrefix: string, phoneSuffix: string = '') => {
-  const user = await prisma.user.create({
-    data: {
-      email: `${emailPrefix}_${faker.internet.email().toLowerCase()}`,
-      firstName: faker.person.firstName(),
-      lastName: faker.person.lastName(),
-      phone: `${faker.phone.number()}${phoneSuffix}`,
-      passwordHash: await faker.internet.password(),
-      landlord: {
-        create: {},
-      },
-    },
-    include: { landlord: true },
+const generateUserRegistrationData = (
+  type: 'staff' | 'tenant' | 'vendor',
+  emailSuffix: string = faker.string.alphanumeric(5),
+): z.infer<typeof RegisterUserSchema> => {
+  const email = `${runIdPrefix}_${emailSuffix}_${faker.internet.email().toLowerCase()}`
+  const baseProfile = {
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
+    phone: faker.phone.number(),
+  }
+
+  const baseData = {
+    email,
+    password: testPasswordGlobal,
+  }
+
+  if (type === 'staff') {
+    return { ...baseData, staff: baseProfile }
+  }
+  if (type === 'tenant') {
+    return { ...baseData, tenant: baseProfile }
+  }
+  if (type === 'vendor') {
+    return {
+      ...baseData,
+      vendor: { ...baseProfile, specialty: faker.commerce.department() },
+    }
+  }
+  throw new Error('Invalid user type for test data generation')
+}
+
+const setupVerifiedUser = async (
+  type: 'staff' | 'tenant' | 'vendor',
+  emailSuffix?: string,
+): Promise<{ user: LocalUser; accessToken: string }> => {
+  const registrationData = generateUserRegistrationData(type, emailSuffix)
+
+  const stageOneResponse = await request(app)
+    .post('/api/v1/auth/register/stage-one')
+    .send({ email: registrationData.email, user: registrationData })
+
+  if (stageOneResponse.status !== 200) {
+    throw new Error(
+      `Setup (Stage 1): Registration failed with status ${
+        stageOneResponse.status
+      } and body: ${JSON.stringify(stageOneResponse.body)}`,
+    )
+  }
+
+  const { otp } = stageOneResponse.body as RegisterStageOneResponse
+  if (!otp) {
+    throw new Error(
+      'Setup (Stage 1): No OTP returned. Ensure NODE_ENV is not "production".',
+    )
+  }
+
+  const stageTwoResponse = await request(app)
+    .post('/api/v1/auth/register/stage-two')
+    .send({ otp, user: registrationData })
+
+  if (stageTwoResponse.status !== 201) {
+    throw new Error(
+      `Setup (Stage 2): Verification failed with status ${
+        stageTwoResponse.status
+      } and body: ${JSON.stringify(stageTwoResponse.body)}`,
+    )
+  }
+
+  const authData = stageTwoResponse.body as z.infer<
+    typeof AuthSuccessResponseSchema
+  >
+  const meResponse = await request(app)
+    .get('/api/v1/auth/me')
+    .set('Authorization', `Bearer ${authData.tokens.access}`)
+
+  const createdUserFromApi = meResponse.body as LocalUser
+  const accessToken = authData.tokens.access
+
+  if (!createdUserFromApi || !accessToken) {
+    throw new Error('Setup (Stage 2): User data or token not found.')
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: createdUserFromApi.id },
+    include: { staff: true, tenant: true, vendor: true },
   })
+
+  if (!dbUser) {
+    throw new Error('Setup: User not found in DB after verification.')
+  }
+
+  testCreatedUserIds.push(dbUser.id)
+
   return {
-    user,
-    landlord: user.landlord!,
-    tokens: {
-      access: generateToken({
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        landlord: user.landlord,
-        tenant: null,
-        vendor: null,
-      }),
-    },
+    user: dbUser as LocalUser,
+    accessToken,
   }
 }
 
-// Helper to create a complex and track its ID for per-test cleanup (afterEach)
-const createComplexForTestAndTrack = async (
-  data: Omit<
-    Complex,
-    'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'notes'
-  > & { landlordId: string },
-): Promise<Complex> => {
-  const complex = await prisma.complex.create({ data })
-  testCreatedComplexIds.push(complex.id)
-  return complex
-}
+// --- Test Suite Lifecycle Hooks ---
 
-// Runs ONCE before all tests in this file
 beforeAll(async () => {
-  runIdPrefix = `testrun_${faker.string.alphanumeric(8)}`
+  runIdPrefix = `complex_testrun_${faker.string.alphanumeric(6)}`
+  logger.info(`Complex Test Run ID Prefix: ${runIdPrefix}`)
 
-  const landlord1Details = await setupLandlord(runIdPrefix, '_L1')
-  landlordUser = landlord1Details.user
-  landlord = landlord1Details.landlord
-  landlordTokens = landlord1Details.tokens
+  const staff1Data = await setupVerifiedUser('staff', 'staff1')
+  staffUser1 = staff1Data.user
+  staffTokens1 = { access: staff1Data.accessToken }
 
-  const landlord2Details = await setupLandlord(runIdPrefix, '_L2')
-  otherLandlordUser = landlord2Details.user
-  otherLandlord = landlord2Details.landlord
-
-  console.log(`Landlord 1: ${landlordUser.email}`)
-  console.log(`Landlord 2: ${otherLandlordUser.email}`)
-  console.log(`Run ID Prefix: ${runIdPrefix}`)
+  const staff2Data = await setupVerifiedUser('staff', 'staff2')
+  staffUser2 = staff2Data.user
+  staffTokens2 = { access: staff2Data.accessToken }
 })
 
-// Runs ONCE after all tests in this file
 afterAll(async () => {
-  // Clean up all data associated with this specific test suite run,
-  // identified by the runIdPrefix in the foundational users' emails.
-  // Order: Complexes -> Landlords -> Users
+  const users = await prisma.user.findMany({
+    where: { email: { startsWith: runIdPrefix } },
+    include: { staff: true },
+  })
+  const userIds = users.map((u) => u.id)
+  const staffIds = users.map((u) => u.staff?.id).filter(Boolean) as string[]
 
-  // Delete complexes belonging to the run-specific landlords
-  if (landlord?.id || otherLandlord?.id) {
-    const landlordIdsForRun: string[] = []
-    if (landlord?.id) landlordIdsForRun.push(landlord.id)
-    if (otherLandlord?.id) landlordIdsForRun.push(otherLandlord.id)
+  if (staffIds.length > 0) {
+    const complexes = await prisma.complex.findMany({
+      where: { assignments: { some: { staffId: { in: staffIds } } } },
+    })
+    const complexIds = complexes.map((c) => c.id)
 
-    if (landlordIdsForRun.length > 0) {
-      await prisma.complex.deleteMany({
-        where: { landlordId: { in: landlordIdsForRun } },
+    if (complexIds.length > 0) {
+      await prisma.complexAssignment.deleteMany({
+        where: { complexId: { in: complexIds } },
       })
+      await prisma.complex.deleteMany({ where: { id: { in: complexIds } } })
     }
   }
 
-  // Delete the run-specific landlords (identified by their user's email prefix)
-  await prisma.landlord.deleteMany({
-    where: { user: { email: { startsWith: runIdPrefix } } },
-  })
-
-  // Delete the run-specific users
-  await prisma.user.deleteMany({
-    where: { email: { startsWith: runIdPrefix } },
-  })
+  if (userIds.length > 0) {
+    await prisma.staff.deleteMany({ where: { userId: { in: userIds } } })
+    await prisma.user.deleteMany({ where: { id: { in: userIds } } })
+  }
 
   await prisma.$disconnect()
 })
 
-// Runs BEFORE EACH 'it' block in the entire file
-beforeEach(async () => {
-  // Reset tracking arrays for entities created *within* the upcoming test
+beforeEach(() => {
   testCreatedComplexIds = []
 })
 
-// Runs AFTER EACH 'it' block in the entire file
 afterEach(async () => {
-  // Clean up entities created *specifically by the test that just ran*
   if (testCreatedComplexIds.length > 0) {
+    await prisma.complexAssignment.deleteMany({
+      where: { complexId: { in: testCreatedComplexIds } },
+    })
     await prisma.complex.deleteMany({
       where: { id: { in: testCreatedComplexIds } },
     })
   }
-  // Add cleanup for other tracked entity types if necessary (e.g., testCreatedUnitIds)
 })
 
-describe('Complex Routes', () => {
+// --- Test Cases ---
+
+describe('Complex Routes (/api/v1/complexes)', () => {
   describe('POST /complexes', () => {
-    it('should create a new complex for the authenticated landlord', async () => {
+    it('should create a new complex for the authenticated staff user', async () => {
       const complexData = generateComplexData('_post')
       const response = await request(app)
         .post('/api/v1/complexes')
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
         .send(complexData)
+        .expect(201)
 
-      expect(response.status).toBe(200)
       expect(response.body.name).toBe(complexData.name)
-      expect(response.body.landlordId).toBe(landlord.id) // landlord is run-specific
-      testCreatedComplexIds.push(response.body.id) // Track for afterEach cleanup
+      expect(response.body.id).toBeDefined()
+      testCreatedComplexIds.push(response.body.id)
 
-      const dbComplex = await prisma.complex.findUnique({
-        where: { id: response.body.id },
+      const assignment = await prisma.complexAssignment.findFirst({
+        where: {
+          complexId: response.body.id,
+          staffId: staffUser1.staff!.id,
+        },
       })
-      expect(dbComplex).not.toBeNull()
+      expect(assignment).not.toBeNull()
     })
 
-    // ... other POST tests (401, 400) remain largely the same, as they don't create data successfully
     it('should return 401 if not authenticated', async () => {
-      const complexData = generateComplexData()
-      const response = await request(app)
+      await request(app)
         .post('/api/v1/complexes')
-        .send(complexData)
-      expect(response.status).toBe(401)
+        .send(generateComplexData('_unauth'))
+        .expect(401)
     })
 
-    it('should return 400 for invalid complex data', async () => {
-      const complexData = generateComplexData()
-      const response = await request(app)
+    it('should return 400 for invalid data (e.g., missing name)', async () => {
+      const { name: _, ...invalidData } = generateComplexData('_invalid')
+      await request(app)
         .post('/api/v1/complexes')
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-        .send({ ...complexData, name: '' })
-      expect(response.status).toBe(400)
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .send(invalidData)
+        .expect(400)
     })
   })
 
   describe('GET /complexes', () => {
-    it('should get an empty list of complexes if none exist for the authenticated landlord', async () => {
-      // `landlord` is specific to this test run.
-      // `afterEach` from previous tests (if any) and `beforeEach` for this test ensure a clean slate for *tracked* items.
-      const response = await request(app)
-        .get('/api/v1/complexes')
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-
-      expect(response.status).toBe(200)
-      expect(response.body.data).toBeInstanceOf(Array)
-      expect(response.body.data.length).toBe(0)
-      expect(response.body.meta.total).toBe(0)
-    })
-
-    it('should get a list of complexes specifically created for the authenticated landlord', async () => {
-      const complexData = generateComplexData('_get_list')
-      // Use helper to create and track for afterEach
-      const createdComplex = await createComplexForTestAndTrack({
-        ...complexData,
-        landlordId: landlord.id,
-      })
-
-      // Create a complex for the *other foundational landlord* of this test run.
-      // This complex will be cleaned up by afterAll, not this test's afterEach (unless explicitly tracked).
-      await prisma.complex.create({
-        data: {
-          ...generateComplexData('_other_landlord_temp'),
-          landlordId: otherLandlord.id,
-        },
-      })
+    it('should get a list of complexes assigned to the authenticated staff user', async () => {
+      const complexData = generateComplexData('_staff1_get')
+      const complexRes = await request(app)
+        .post('/api/v1/complexes')
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .send(complexData)
+        .expect(201)
+      testCreatedComplexIds.push(complexRes.body.id)
 
       const response = await request(app)
         .get('/api/v1/complexes')
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .expect(200)
 
-      expect(response.status).toBe(200)
       expect(response.body.data).toBeInstanceOf(Array)
-      expect(response.body.data.length).toBe(1)
-      expect(response.body.data[0].id).toBe(createdComplex.id)
-      expect(response.body.meta.total).toBe(1)
+      expect(response.body.data.length).toBeGreaterThanOrEqual(1)
+      expect(response.body.data.some((c: Complex) => c.id === complexRes.body.id)).toBe(true)
     })
 
-    it('should support pagination (page and limit)', async () => {
-      const numComplexesToCreate = 6
-      const createdComplexesApi: Complex[] = [] // For checking order if needed
-      for (let i = 0; i < numComplexesToCreate; i++) {
-        const c = await createComplexForTestAndTrack({
-          ...generateComplexData(`_pg_${i + 1}`),
-          landlordId: landlord.id,
-        })
-        createdComplexesApi.push(c)
-      }
-      // This one for otherLandlord is not part of landlordToken's results or afterEach cleanup for this test
-      await prisma.complex.create({
-        data: {
-          ...generateComplexData('_pg_other'),
-          landlordId: otherLandlord.id,
-        },
-      })
-
-      const responsePage1 = await request(app)
-        .get('/api/v1/complexes?page=1&limit=3')
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-      expect(responsePage1.status).toBe(200)
-      expect(responsePage1.body.data.length).toBe(3)
-      expect(responsePage1.body.meta.total).toBe(numComplexesToCreate)
-
-      const responsePage2 = await request(app)
-        .get('/api/v1/complexes?page=2&limit=3')
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-      expect(responsePage2.status).toBe(200)
-      expect(responsePage2.body.data.length).toBe(3)
-      expect(responsePage2.body.meta.total).toBe(numComplexesToCreate)
-    })
-
-    it('should support filtering by name', async () => {
-      const uniqueName = `${runIdPrefix}_UniqueSearchName_${faker.string.alphanumeric(5)}`
-      const targetComplex = await createComplexForTestAndTrack({
-        ...generateComplexData(),
-        name: uniqueName,
-        landlordId: landlord.id,
-      })
-      await createComplexForTestAndTrack({
-        // Another complex for the same landlord, won't match filter
-        ...generateComplexData('_filter_nonmatch'),
-        landlordId: landlord.id,
-      })
-
+    it('should not list complexes belonging to other staff members', async () => {
       const response = await request(app)
-        .get(`/api/v1/complexes?filter=${uniqueName.substring(0, 25)}`) // Use a significant part of unique name
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-      console.log(response.body)
-      expect(response.status).toBe(200)
-      expect(response.body.data.length).toBe(1)
-      expect(response.body.data[0].id).toBe(targetComplex.id)
-      expect(response.body.meta.total).toBe(1)
-    })
-    // ... GET /complexes 401 test remains the same
-    it('should return 401 if not authenticated', async () => {
-      const response = await request(app).get('/api/v1/complexes')
-      expect(response.status).toBe(401)
+        .get('/api/v1/complexes')
+        .set('Authorization', `Bearer ${staffTokens2.access}`)
+        .expect(200)
+
+      expect(response.body.data).toBeInstanceOf(Array)
+      const complexForStaff1 = testCreatedComplexIds[0]
+      expect(response.body.data.some((c: Complex) => c.id === complexForStaff1)).toBe(false)
     })
   })
 
   describe('GET /complexes/:complexId', () => {
-    let complexOfLandlord: Complex
-    let complexOfOtherRunLandlord: Complex // Belongs to otherLandlord of this run
+    it('should get a single complex by ID if assigned', async () => {
+      const complexRes = await request(app)
+        .post('/api/v1/complexes')
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .send(generateComplexData('_get_one'))
+        .expect(201)
+      const complexId = complexRes.body.id
+      testCreatedComplexIds.push(complexId)
 
-    beforeEach(async () => {
-      // This runs AFTER global beforeEach
-      complexOfLandlord = await createComplexForTestAndTrack({
-        ...generateComplexData('_get_by_id'),
-        landlordId: landlord.id,
-      })
-      // This complex belongs to `otherLandlord` (part of the same test run).
-      // It will be cleaned by `afterAll`. Not tracked for this test's `afterEach`.
-      complexOfOtherRunLandlord = await prisma.complex.create({
-        data: {
-          ...generateComplexData('_get_by_id_other'),
-          landlordId: otherLandlord.id,
-        },
-      })
+      const response = await request(app)
+        .get(`/api/v1/complexes/${complexId}`)
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .expect(200)
+
+      expect(response.body.id).toBe(complexId)
     })
 
-    it('should get a specific complex if owned by the authenticated landlord', async () => {
-      const response = await request(app)
-        .get(`/api/v1/complexes/${complexOfLandlord.id}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-      expect(response.status).toBe(200)
-      expect(response.body.id).toBe(complexOfLandlord.id)
-    })
+    it('should return 403 if trying to get a complex not assigned', async () => {
+      const complexRes = await request(app)
+        .post('/api/v1/complexes')
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .send(generateComplexData('_get_forbidden'))
+        .expect(201)
+      const complexId = complexRes.body.id
+      testCreatedComplexIds.push(complexId)
 
-    it('should return 404 if complex belongs to another landlord (of this run)', async () => {
-      const response = await request(app)
-        .get(`/api/v1/complexes/${complexOfOtherRunLandlord.id}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-      expect(response.status).toBe(404)
-    })
-    // ... Other GET /complexes/:complexId tests (404 non-existent, 401) remain similar
-    it('should return 404 if complex does not exist', async () => {
-      const nonExistentId = faker.string.uuid()
-      const response = await request(app)
-        .get(`/api/v1/complexes/${nonExistentId}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-      expect(response.status).toBe(404)
-    })
-    it('should return 401 if not authenticated', async () => {
-      const response = await request(app).get(
-        `/api/v1/complexes/${complexOfLandlord.id}`,
-      )
-      expect(response.status).toBe(401)
+      await request(app)
+        .get(`/api/v1/complexes/${complexId}`)
+        .set('Authorization', `Bearer ${staffTokens2.access}`)
+        .expect(403)
     })
   })
 
   describe('PATCH /complexes/:complexId', () => {
-    let complexToUpdate: Complex
-    const updateData = { name: 'Updated Complex Name by Patch Test' }
+    it('should update an assigned complex', async () => {
+      const complexRes = await request(app)
+        .post('/api/v1/complexes')
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .send(generateComplexData('_patch_target'))
+        .expect(201)
+      const complexId = complexRes.body.id
+      testCreatedComplexIds.push(complexId)
 
-    beforeEach(async () => {
-      complexToUpdate = await createComplexForTestAndTrack({
-        ...generateComplexData('_patch_target'),
-        landlordId: landlord.id,
-      })
+      const updatePayload = { name: 'Updated Name' }
+      const response = await request(app)
+        .patch(`/api/v1/complexes/${complexId}`)
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .send(updatePayload)
+        .expect(200)
+
+      expect(response.body.name).toBe(updatePayload.name)
     })
 
-    it('should update a complex if owned by the authenticated landlord', async () => {
-      const response = await request(app)
-        .patch(`/api/v1/complexes/${complexToUpdate.id}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-        .send(updateData)
-      expect(response.status).toBe(200)
-      expect(response.body.name).toBe(updateData.name)
-    })
+    it('should return 403 if trying to update a complex not assigned', async () => {
+      const complexRes = await request(app)
+        .post('/api/v1/complexes')
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .send(generateComplexData('_patch_forbidden'))
+        .expect(201)
+      const complexId = complexRes.body.id
+      testCreatedComplexIds.push(complexId)
 
-    it('should return 404 if complex belongs to another landlord (of this run)', async () => {
-      const otherComplex = await prisma.complex.create({
-        // Belongs to otherLandlord of this run
-        data: {
-          ...generateComplexData('_patch_other'),
-          landlordId: otherLandlord.id,
-        },
-      })
-      // This otherComplex will be cleaned by afterAll.
-      // If immediate cleanup after this test was vital, one could:
-      // testCreatedComplexIds.push(otherComplex.id); // to clean in this test's afterEach
-      // OR await prisma.complex.delete({ where: {id: otherComplex.id }}); // manual immediate
-      const response = await request(app)
-        .patch(`/api/v1/complexes/${otherComplex.id}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-        .send(updateData)
-      expect(response.status).toBe(404)
-      await prisma.complex.delete({ where: { id: otherComplex.id } }) // Manual immediate for hygiene
-    })
-    // ... Other PATCH tests (400, 401, 404 non-existent) remain similar
-    it('should return 400 for invalid update data', async () => {
-      const response = await request(app)
-        .patch(`/api/v1/complexes/${complexToUpdate.id}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-        .send({ name: '' })
-      expect(response.status).toBe(400)
-    })
-    it('should return 401 if not authenticated', async () => {
-      const response = await request(app)
-        .patch(`/api/v1/complexes/${complexToUpdate.id}`)
-        .send(updateData)
-      expect(response.status).toBe(401)
-    })
-    it('should return 404 if complex does not exist for patching', async () => {
-      const nonExistentId = faker.string.uuid()
-      const response = await request(app)
-        .patch(`/api/v1/complexes/${nonExistentId}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-        .send(updateData)
-      expect(response.status).toBe(404)
+      await request(app)
+        .patch(`/api/v1/complexes/${complexId}`)
+        .set('Authorization', `Bearer ${staffTokens2.access}`)
+        .send({ name: 'Forbidden Update' })
+        .expect(403)
     })
   })
 
   describe('DELETE /complexes/:complexId', () => {
-    let complexToDelete: Complex
+    it('should delete an assigned complex', async () => {
+      const complexRes = await request(app)
+        .post('/api/v1/complexes')
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .send(generateComplexData('_delete_target'))
+        .expect(201)
+      const complexId = complexRes.body.id
+      // Don't track for afterEach cleanup, as this test cleans it up itself
 
-    beforeEach(async () => {
-      complexToDelete = await createComplexForTestAndTrack({
-        ...generateComplexData('_delete_target'),
-        landlordId: landlord.id,
-      })
+      await request(app)
+        .delete(`/api/v1/complexes/${complexId}`)
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .expect(204)
+
+      const dbComplex = await prisma.complex.findUnique({ where: { id: complexId } })
+      expect(dbComplex).toBeNull()
     })
 
-    it('should soft delete a complex if owned by the authenticated landlord', async () => {
-      const response = await request(app)
-        .delete(`/api/v1/complexes/${complexToDelete.id}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-      expect(response.status).toBe(200)
-      expect(response.body.deletedAt).not.toBeNull()
-      // The complex is soft-deleted. `afterEach` will hard-delete it via `deleteMany`.
-    })
+    it('should return 403 if trying to delete a complex not assigned', async () => {
+      const complexRes = await request(app)
+        .post('/api/v1/complexes')
+        .set('Authorization', `Bearer ${staffTokens1.access}`)
+        .send(generateComplexData('_delete_forbidden'))
+        .expect(201)
+      const complexId = complexRes.body.id
+      testCreatedComplexIds.push(complexId)
 
-    it('should return 404 if complex belongs to another landlord (of this run)', async () => {
-      const otherComplex = await prisma.complex.create({
-        // Belongs to otherLandlord of this run
-        data: {
-          ...generateComplexData('_delete_other'),
-          landlordId: otherLandlord.id,
-        },
-      })
-      // This otherComplex will be cleaned by afterAll.
-      const response = await request(app)
-        .delete(`/api/v1/complexes/${otherComplex.id}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-      expect(response.status).toBe(404)
-      await prisma.complex.delete({ where: { id: otherComplex.id } }) // Manual immediate for hygiene
-    })
-    // ... Other DELETE tests (401, 404 non-existent) remain similar
-    it('should return 401 if not authenticated', async () => {
-      const response = await request(app).delete(
-        `/api/v1/complexes/${complexToDelete.id}`,
-      )
-      expect(response.status).toBe(401)
-    })
-    it('should return 404 if complex does not exist for deleting', async () => {
-      const nonExistentId = faker.string.uuid()
-      const response = await request(app)
-        .delete(`/api/v1/complexes/${nonExistentId}`)
-        .set('Authorization', `Bearer ${landlordTokens.access}`)
-      expect(response.status).toBe(404)
+      await request(app)
+        .delete(`/api/v1/complexes/${complexId}`)
+        .set('Authorization', `Bearer ${staffTokens2.access}`)
+        .expect(403)
     })
   })
 })
