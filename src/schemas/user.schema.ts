@@ -1,18 +1,9 @@
-import { z } from 'zod';
-
-// --- No changes needed for these schemas ---
-// Login, registration, and OAuth schemas are well-defined for their purpose.
+import { z } from 'zod'
 
 export const LoginSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password must be at least 1 character long'),
-});
-
-export const RegisterTenantSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  middleName: z.string().optional(),
-});
+  password: z.string().min(1, 'Password must be at least 3 characters long'),
+})
 
 export const RegisterStaffSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -20,12 +11,30 @@ export const RegisterStaffSchema = z.object({
   middleName: z.string().optional(),
 });
 
+export const RegisterTenantSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  middleName: z.string().optional(),
+})
+
 export const RegisterVendorSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   middleName: z.string().optional(),
   specialty: z.string().optional().default('N/A'),
 });
+
+export const BaseUserSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters long')
+    .optional(),
+  avatarUrl: z.string().url().optional(),
+  staff: RegisterStaffSchema.optional(),
+  tenant: RegisterTenantSchema.optional(),
+  vendor: RegisterVendorSchema.optional(),
+})
 
 export const RegisterUserSchema = z
   .object({
@@ -40,13 +49,35 @@ export const RegisterUserSchema = z
     message: 'Exactly one role (staff, tenant, or vendor) is required',
   });
 
-// --- Changes Start Here ---
+export const OAuthUserSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    avatarUrl: z.string().url().optional(),
+    staff: RegisterStaffSchema.optional(),
+    tenant: RegisterTenantSchema.optional(),
+    vendor: RegisterVendorSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      const { staff, tenant, vendor } = data
+      const roles = [staff, tenant, vendor].filter(Boolean)
+      return roles.length === 1
+    },
+    {
+      message: 'Exactly one role is required',
+    },
+  )
 
-/**
- * REFACTORED: The schema for updating a Tenant's own profile information.
- * - Removed 'deletedAt' as this is an administrative action.
- * - Added fields from the Tenant model that a user would realistically update.
- */
+export const RegisterStageOneSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  user: RegisterUserSchema,
+})
+
+export const RegisterStageTwoSchema = z.object({
+  otp: z.string().min(4, 'OTP must be at least 4 characters'),
+  user: RegisterUserSchema,
+})
+
 export const UpdateTenantSchema = z
   .object({
     firstName: z.string().min(1).optional(),
@@ -59,10 +90,6 @@ export const UpdateTenantSchema = z
     message: 'At least one allowed field is required for update',
   });
 
-/**
- * REFACTORED: The schema for updating a Staff member's own profile information.
- * This schema was already correct, just adding a comment for consistency.
- */
 export const UpdateStaffSchema = z
   .object({
     firstName: z.string().min(1).optional(),
