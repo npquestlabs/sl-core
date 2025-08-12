@@ -8,7 +8,7 @@ import { NotFoundError } from '../util/error'
 import { PaginationSchema } from '../schemas/extras.schema'
 import { PaginatedResponse } from '../types'
 import { Prisma, StaffRole } from '../../generated/prisma'
-import { CreatedComplex, DetailedComplex, ListedComplex } from '../types/out'
+import { CreatedComplex, DetailedComplex, ListedComplex, ListedUnit } from '../types/out'
 
 export async function createComplex(
   staffId: string,
@@ -17,6 +17,7 @@ export async function createComplex(
   const createdComplex = await prisma.complex.create({
     data: {
       ...data,
+      createdBy: staffId,
       assignments: {
         create: {
           staffId,
@@ -136,9 +137,12 @@ export async function getStaffComplexes(
  */
 export async function getDetailedComplex(
   id: string,
+  // This 'where' parameter can be useful for adding extra authorization checks,
+  // e.g., ensuring the requesting user is assigned to this complex.
   where: Prisma.ComplexWhereInput = {},
 ): Promise<DetailedComplex | null> {
-  const unitsLimit = 3
+  const unitsLimit = 3;
+  const now = new Date();
 
   const complex = await prisma.complex.findUnique({
     where: { ...where, id: id, deletedAt: null },
@@ -158,9 +162,11 @@ export async function getDetailedComplex(
           assignments: true,
         },
       },
+      // Fetch a preview of units
       units: {
         where: { deletedAt: null },
         take: unitsLimit,
+        orderBy: { createdAt: 'desc' }, // Order for consistent results
         select: {
           id: true,
           label: true,
@@ -173,16 +179,26 @@ export async function getDetailedComplex(
               name: true,
             },
           },
-          leases: {
-            orderBy: { startedAt: 'desc' },
+          // CORRECTED: The path to lease status is now through Occupancy.
+          // We fetch the most recent occupancy to determine the unit's status.
+          occupancies: {
+            orderBy: { currentLease: { createdAt: 'desc' } },
             take: 1,
-            select: { status: true },
+            select: {
+              currentLease: {
+                select: {
+                  startsAt: true,
+                  endsAt: true,
+                },
+              },
+            },
           },
           _count: {
-            select: { maintenanceRequests: true },
+            select: { maintenanceRequests: { where: { deletedAt: null } } },
           },
         },
       },
+      // Staff assignments logic is correct and does not need changes.
       assignments: {
         select: {
           role: true,
@@ -199,26 +215,44 @@ export async function getDetailedComplex(
         },
       },
     },
-  })
+  });
 
   if (!complex) {
-    return null
+    return null;
   }
 
-  const formattedUnits = complex.units.map((unit) => ({
-    id: unit.id,
-    label: unit.label,
-    type: unit.type,
-    rentAmount: unit.rentAmount ? unit.rentAmount.toString() : null,
-    rentCurrency: unit.rentCurrency,
-    complex: unit.complex,
-    leaseStatus: unit.leases.length > 0 ? unit.leases[0].status : null,
-    _count: {
-      maintenanceRequests: unit._count.maintenanceRequests,
-    },
-  }))
+  // CORRECTED: The mapping logic now dynamically calculates the leaseStatus.
+  const formattedUnits = complex.units.map((unit) => {
+    const latestOccupancy = unit.occupancies.length > 0 ? unit.occupancies[0] : null;
+    const latestLease = latestOccupancy?.currentLease;
+    let leaseStatus: ListedUnit['leaseStatus'] = null; // 'ACTIVE' | 'EXPIRED' | 'PENDING' | null
 
-  return { ...complex, units: formattedUnits }
+    if (latestLease) {
+      if (latestLease.endsAt < now) {
+        leaseStatus = 'EXPIRED';
+      } else if (latestLease.startsAt > now) {
+        leaseStatus = 'PENDING';
+      } else {
+        leaseStatus = 'ACTIVE';
+      }
+    }
+
+    return {
+      id: unit.id,
+      label: unit.label,
+      type: unit.type,
+      rentAmount: unit.rentAmount ? unit.rentAmount.toString() : null,
+      rentCurrency: unit.rentCurrency,
+      complex: unit.complex,
+      leaseStatus: leaseStatus, // Assign the dynamically calculated status
+      _count: {
+        maintenanceRequests: unit._count.maintenanceRequests,
+      },
+    };
+  });
+
+  // Return the full complex object with the correctly formatted units.
+  return { ...complex, units: formattedUnits };
 }
 
 export async function countComplexes(where: Prisma.ComplexWhereInput = {}) {

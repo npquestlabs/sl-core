@@ -7,3 +7,8 @@ export function sanitizeUser(
   const safeUser = LocalUserSchema.parse(user)
   return safeUser
 }
+
+export function generateSerial() {
+  const serial = Array(16).map(() => Math.random() * 10).join()
+  return serial
+}

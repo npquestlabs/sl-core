@@ -142,7 +142,7 @@ export const sendVerificationEmail = async (
   const htmlBody = generateBaseHtml(subject, htmlContent)
 
   const mailOptions: nodemailer.SendMailOptions = {
-    from: `"${config.appName}" <${config.appEmail}>`,
+    from: `"${config.appName}" <${config.emailer}>`,
     to: email,
     subject: subject,
     text: textBody,
@@ -192,7 +192,7 @@ export const sendPasswordResetEmail = async (
   const htmlBody = generateBaseHtml(subject, htmlContent)
 
   const mailOptions: nodemailer.SendMailOptions = {
-    from: `"${config.appName}" <${config.appEmail}>`,
+    from: `"${config.appName}" <${config.emailer}>`,
     to: email,
     subject: subject,
     text: textBody,
@@ -221,7 +221,7 @@ export const sendOtpEmail = async (email: string, otp: string) => {
   `
   const htmlBody = generateBaseHtml(subject, htmlContent)
   const mailOptions: nodemailer.SendMailOptions = {
-    from: `"${config.appName}" <${config.appEmail}>`,
+    from: `"${config.appName}" <${config.emailer}>`,
     to: email,
     subject: subject,
     text: textBody,

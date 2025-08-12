@@ -1,31 +1,237 @@
 import { z } from 'zod'
 import { prisma } from '../configs/prisma'
 import { AppError } from '../util/error'
-import { CreateLeaseSchema, RenewLeaseSchema } from '../schemas/lease.schema'
-import { LeaseStatus, Prisma } from '../../generated/prisma'
+import { CreateLeaseSchema, EditLeaseSchema, RenewLeaseSchema } from '../schemas/lease.schema'
+import { LeaseExtensionType, Prisma } from '../../generated/prisma'
+import { generateSerial } from '@/util'
+
+// don't edit this one
+export const createOccupancy = async (
+  staffId: string,
+  input: z.infer<typeof CreateLeaseSchema>,
+) => {
+  const { unitId, tenantId, templateId, ...leaseTimeline } = input
+
+  const newLease = await prisma.$transaction(async (tx) => {
+    // 1. Fetch all necessary records and perform validation
+    const unit = await tx.unit.findFirst({
+      where: { id: unitId, complex: { assignments: { some: { staffId } } } },
+      include: { complex: true },
+    })
+    if (!unit) {
+      throw new AppError('Unit not found or you do not have permission', 404)
+    }
+
+    if (!unit.rentAmount) {
+      throw new AppError('rentAmount not set for this unit')
+    }
+    if (!unit.rentCurrency) {
+      throw new AppError('rentCurrency not set for this unit')
+    }
+    if (!unit.rentDuration) {
+      throw new AppError('rentDuration not set for this unit')
+    }
+
+    const tenant = await tx.tenant.findUnique({ where: { id: tenantId } })
+    if (!tenant) throw new AppError('Tenant not found', 404)
+
+    const template = await tx.leaseTemplate.findUnique({
+      where: { id: templateId },
+    })
+    if (!template) throw new AppError('Lease template not found', 404)
+
+    // 2. Check for overlapping occupancies (the new source of truth for availability)
+    const existingOccupancy = await tx.occupancy.findFirst({
+      where: {
+        unitId,
+        tenantId,
+      },
+    })
+
+    if (existingOccupancy) {
+      throw new AppError('An existing aggreement should be renewed', 409)
+    }
+
+    // 3. Create the new Lease record
+    const leaseData = {
+      serial: generateSerial(),
+      propertyName: `${unit.complex.name} ${unit.type} ${unit.label}`,
+      tenantName: `${tenant.firstName} ${tenant.lastName}`,
+      // Core lease terms
+      ...leaseTimeline,
+      // Copy signer details from the template
+      signedBy: template.signedBy,
+      signerRole: template.signerRole,
+      signature: template.signature,
+      signerIdType: template.signerIdType,
+      signerIdNumber: template.signerIdNumber,
+      // Copy the unit details
+      rentAmount: unit.rentAmount,
+      rentCurrency: unit.rentCurrency,
+      rentDuration: unit.rentDuration,
+    }
+
+    const lease = await tx.lease.create({
+      data: {
+        ...leaseData,
+        currentOccupancy: {
+          create: {
+            unitId,
+            tenantId,
+          },
+        },
+      },
+      include: {
+        currentOccupancy: true,
+      },
+    })
+
+    return lease
+  })
+
+  // Fetch the created lease with details for the response
+  return getLeaseDetails(newLease.id)
+}
+
+export const editLease = async (
+  staffId: string,
+  leaseId: string,
+  input: z.infer<typeof EditLeaseSchema>,
+) => {
+  const correctedLease = await prisma.$transaction(async (tx) => {
+    const oldLease = await tx.lease.findFirst({
+      where: {
+        id: leaseId,
+        currentOccupancy: {
+          unit: { complex: { assignments: { some: { staffId } } } },
+        },
+      },
+      include: {
+        currentOccupancy: true,
+      },
+    });
+
+    if (!oldLease || !oldLease.currentOccupancy) {
+      throw new AppError(
+        'Lease not found, is not active, or you do not have permission to edit it.',
+        404,
+      );
+    }
+    const occupancyId = oldLease.currentOccupancy.id;
+
+    // 3. Create a new lease containing the corrected details.
+    const newLease = await tx.lease.create({
+      data: {
+        serial: generateSerial(),
+        propertyName: oldLease.propertyName,
+        tenantName: oldLease.tenantName,
+        startsAt: input.startsAt ?? oldLease.startsAt,
+        endsAt: input.endsAt ?? oldLease.endsAt,
+        rentAmount: input.rentAmount ?? oldLease.rentAmount,
+        rentDuration: input.rentDuration ?? oldLease.rentDuration,
+        rentCurrency: input.rentCurrency ?? oldLease.rentCurrency,
+        rentQuotas: input.rentQuotas ?? oldLease.rentQuotas,
+        noticePeriod: input.noticePeriod ?? oldLease.noticePeriod,
+        terms: input.terms ?? oldLease.terms,
+        signedBy: oldLease.signedBy,
+        signerRole: oldLease.signerRole,
+      },
+    });
+
+    await tx.occupancy.update({
+      where: { id: occupancyId },
+      data: {
+        currentLeaseId: newLease.id,
+        previousLeaseId: oldLease.id,
+        leaseExtensionType: LeaseExtensionType.EDIT, // Set the type to EDIT
+      },
+    });
+
+    return newLease;
+  });
+
+  return getLeaseDetails(correctedLease.id);
+};
+
+//fix this one too
+export const renewLease = async (
+  staffId: string,
+  input: z.infer<typeof RenewLeaseSchema>,
+) => {
+  const { occupancyId, newStartsAt, newEndsAt, ...leaseOverrides } = input
+
+  const renewedLease = await prisma.$transaction(async (tx) => {
+    // 1. Fetch the occupancy to renew, including all related data for validation
+    const occupancyToRenew = await tx.occupancy.findFirst({
+      where: {
+        id: occupancyId,
+        unit: { complex: { assignments: { some: { staffId } } } },
+      },
+      include: {
+        currentLease: true,
+        unit: { include: { complex: true } },
+        tenant: true,
+      },
+    })
+    if (!occupancyToRenew) {
+      throw new AppError(
+        'Occupancy not found or you do not have permission',
+        404,
+      )
+    }
+    if (!occupancyToRenew.currentLease) {
+      throw new AppError('Cannot renew an occupancy with no active lease', 400)
+    }
+    const oldLease = occupancyToRenew.currentLease
+
+    // 2. Create the new Lease for the renewal period
+    const newLease = await tx.lease.create({
+      data: {
+        serial: generateSerial(),
+        propertyName: oldLease.propertyName,
+        tenantName: oldLease.tenantName,
+        startsAt: newStartsAt,
+        endsAt: newEndsAt,
+        // Use overrides from input, or fall back to the old lease's details
+        rentAmount: leaseOverrides.rentAmount ?? oldLease.rentAmount,
+        rentDuration: leaseOverrides.rentDuration ?? oldLease.rentDuration,
+        rentCurrency: leaseOverrides.rentCurrency ?? oldLease.rentCurrency,
+        rentQuotas: leaseOverrides.rentQuotas ?? oldLease.rentQuotas,
+        noticePeriod: leaseOverrides.noticePeriod ?? oldLease.noticePeriod,
+        terms: leaseOverrides.terms ?? oldLease.terms,
+        signedBy: oldLease.signedBy,
+        signerRole: oldLease.signerRole,
+      },
+    })
+
+    // 3. Update the occupancy: the new lease becomes current, the old one becomes previous
+    await tx.occupancy.update({
+      where: { id: occupancyId },
+      data: {
+        currentLeaseId: newLease.id,
+        previousLeaseId: oldLease.id,
+        leaseExtensionType: LeaseExtensionType.RENEWAL,
+      },
+    })
+
+    return newLease
+  })
+
+  return getLeaseDetails(renewedLease.id)
+}
 
 /**
- * Retrieves full lease details, including related unit, complex, tenant, and staff information.
- * This is a foundational function for operations that need comprehensive lease data.
+ * REFACTORED: Retrieves full lease details via its occupancy relationship.
  */
 export const getLeaseDetails = async (leaseId: string) => {
   const lease = await prisma.lease.findUnique({
     where: { id: leaseId },
     include: {
-      unit: {
+      // The path to related data is now through the occupancy record
+      currentOccupancy: {
         include: {
-          complex: true,
-        },
-      },
-      tenant: {
-        include: {
-          user: true,
-        },
-      },
-      staff: {
-        // Updated from 'staff'
-        include: {
-          user: true,
+          unit: { include: { complex: true } },
+          tenant: { include: { user: true } },
         },
       },
     },
@@ -39,181 +245,30 @@ export const getLeaseDetails = async (leaseId: string) => {
 }
 
 /**
- * Creates a new lease agreement.
- * Ensures the staff member has permission to create a lease for the specified unit,
- * and that the unit is not already leased for an overlapping period.
- */
-export const createLease = async (
-  staffId: string,
-  input: z.infer<typeof CreateLeaseSchema>,
-) => {
-  const { unitId, tenantId, startedAt, endsAt } = input
-
-  // Verify the unit exists and the staff member is assigned to its complex
-  const unit = await prisma.unit.findFirst({
-    where: {
-      id: unitId,
-      complex: {
-        assignments: {
-          some: { staffId },
-        },
-      },
-    },
-  })
-
-  if (!unit) {
-    throw new AppError(
-      'Unit not found or you do not have permission for this complex',
-      404,
-    )
-  }
-
-  if (unit.rentAmount == null || unit.rentCurrency == null) {
-    throw new AppError(
-      `Unit ${unitId} is missing required rent information.`,
-      400,
-    )
-  }
-
-  // Verify tenant exists
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
-  if (!tenant) {
-    throw new AppError('Tenant not found', 404)
-  }
-
-  // Check for any overlapping leases on the same unit
-  const overlappingLease = await prisma.lease.findFirst({
-    where: {
-      unitId: unitId,
-      status: { in: ['ACTIVE', 'PENDING'] },
-      OR: [{ startedAt: { lte: endsAt }, endsAt: { gte: startedAt } }],
-      deletedAt: null,
-    },
-  })
-
-  if (overlappingLease) {
-    throw new AppError('Unit is already leased for an overlapping period.', 409)
-  }
-
-  // Create the lease record
-  const lease = await prisma.lease.create({
-    data: {
-      ...input,
-      staffId,
-      rentAmount: unit.rentAmount,
-      rentCurrency: unit.rentCurrency,
-      status: 'ACTIVE',
-    },
-    include: {
-      unit: true,
-      tenant: { include: { user: true } },
-      staff: { include: { user: true } },
-    },
-  })
-
-  // Advanced features like PDF generation can be added back here later.
-  return lease
-}
-
-/**
- * Renews an existing lease.
- * It creates a new lease linked to the old one and updates the old lease's status to RENEWED.
- */
-export const renewLease = async (
-  leaseId: string,
-  staffId: string,
-  input: z.infer<typeof RenewLeaseSchema>,
-) => {
-  const { newEndsAt, ...restOfInput } = input
-
-  // Find the lease and verify the staff member has permission to modify it
-  const existingLease = await prisma.lease.findFirst({
-    where: {
-      id: leaseId,
-      unit: {
-        complex: {
-          assignments: {
-            some: { staffId },
-          },
-        },
-      },
-    },
-  })
-
-  if (!existingLease) {
-    throw new AppError(
-      'Lease not found or you do not have permission to modify it',
-      404,
-    )
-  }
-
-  if (existingLease.status !== 'ACTIVE' && existingLease.status !== 'EXPIRED') {
-    throw new AppError(
-      `Cannot renew a lease with status: ${existingLease.status}`,
-      400,
-    )
-  }
-
-  if (newEndsAt <= existingLease.endsAt) {
-    throw new AppError(
-      'New end date must be after the current lease end date',
-      400,
-    )
-  }
-
-  // Set the new start date to the day after the old lease ends
-  const newStartedAt = new Date(existingLease.endsAt)
-  newStartedAt.setDate(newStartedAt.getDate() + 1)
-
-  // Use a transaction to ensure both creation and update succeed or fail together
-  const [newLease] = await prisma.$transaction([
-    prisma.lease.create({
-      data: {
-        ...restOfInput,
-        startedAt: newStartedAt,
-        endsAt: newEndsAt,
-        parentLeaseId: leaseId,
-        status: LeaseStatus.ACTIVE,
-        unitId: existingLease.unitId,
-        tenantId: existingLease.tenantId,
-        staffId: existingLease.staffId,
-        rentAmount: existingLease.rentAmount, // Or allow new amount in input
-        rentCurrency: existingLease.rentCurrency,
-        noticePeriod: existingLease.noticePeriod,
-      },
-      include: {
-        unit: true,
-        tenant: { include: { user: true } },
-        staff: { include: { user: true } },
-      },
-    }),
-    prisma.lease.update({
-      where: { id: leaseId },
-      data: { status: 'RENEWED' },
-    }),
-  ])
-
-  return newLease
-}
-
-/**
- * Lists all leases associated with complexes managed by a specific staff member.
+ * REFACTORED: Lists leases by querying through the occupancy relationship.
  */
 export const listLeasesForStaff = async (staffId: string) => {
   const leases = await prisma.lease.findMany({
     where: {
       deletedAt: null,
-      unit: {
-        complex: {
-          assignments: {
-            some: { staffId },
+      // The relational path to staff must go through occupancy -> unit -> complex
+      currentOccupancy: {
+        unit: {
+          complex: {
+            assignments: {
+              some: { staffId },
+            },
           },
         },
       },
     },
     include: {
-      unit: { include: { complex: true } },
-      tenant: { include: { user: true } },
+      currentOccupancy: {
+        include: {
+          unit: { include: { complex: true } },
+          tenant: true,
+        },
+      },
     },
     orderBy: {
       createdAt: 'desc',
@@ -224,47 +279,7 @@ export const listLeasesForStaff = async (staffId: string) => {
 }
 
 /**
- * Terminates a lease by setting its status to TERMINATED and marking it as deleted.
- */
-export const terminateLease = async (leaseId: string, staffId: string) => {
-  // Use findFirst with a nested condition to check for permissions before updating
-  const leaseToTerminate = await prisma.lease.findFirst({
-    where: {
-      id: leaseId,
-      unit: {
-        complex: {
-          assignments: {
-            some: { staffId },
-          },
-        },
-      },
-    },
-  })
-
-  if (!leaseToTerminate) {
-    throw new AppError(
-      'Lease not found or you do not have permission to modify it',
-      404,
-    )
-  }
-
-  if (leaseToTerminate.status === 'TERMINATED') {
-    throw new AppError('Lease has already been terminated.', 400)
-  }
-
-  const terminatedLease = await prisma.lease.update({
-    where: { id: leaseId },
-    data: {
-      status: 'TERMINATED',
-      deletedAt: new Date(),
-    },
-  })
-
-  return terminatedLease
-}
-
-/**
- * A generic function to count leases based on a dynamic where clause.
+ * A generic function to count leases based on a dynamic where clause. No changes needed.
  */
 export async function countLeases(where: Prisma.LeaseWhereInput = {}) {
   return prisma.lease.count({

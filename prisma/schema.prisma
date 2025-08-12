@@ -25,10 +25,15 @@ model User {
   avatarUrl String? @map("avatar_url")
 
   maintenanceRequests MaintenanceRequest[]
+  notifications       Notification[]
 
   staff  Staff?
   tenant Tenant?
   vendor Vendor?
+
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   @@index([email], map: "users_idx_email")
   @@map("users")
@@ -37,18 +42,29 @@ model User {
 model Complex {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
 
-  name        String    @db.VarChar(255)
-  countryCode String    @map("country_code") @db.Char(3)
-  cityName    String    @map("city_name")
+  name        String  @db.VarChar(255)
+  countryCode String  @map("country_code") @db.Char(3)
+  cityName    String  @map("city_name")
   address     String?
   description String?
   notes       String?
-  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  units       Unit[]
-  assignments ComplexAssignment[]
+  logoUrl String? @map("logo_url")
+
+  bankName          String? @map("bank_name") @db.VarChar(100)
+  bankAccount       String? @map("bank_account") @db.VarChar(100)
+  mobileMoneyNumber String? @map("mobile_money_number") @db.VarChar(50)
+
+  createdBy String @db.Uuid
+
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  creator        Staff               @relation(fields: [createdBy], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  units          Unit[]
+  assignments    ComplexAssignment[]
+  leaseTemplates LeaseTemplate[]
 
   @@map("complexes")
 }
@@ -62,16 +78,17 @@ model Unit {
   description String?
   notes       String?
 
-  rentAmount   Decimal? @map("rent_amount") @db.Decimal(18, 2)
-  rentCurrency String?  @default("GHS") @map("rent_currency") @db.VarChar(3)
-  rentDuration Int?     @map("rent_duration")
-  rentUnit     String?  @map("rent_unit") @db.VarChar(24)
+  rentAmount   Decimal?      @map("rent_amount") @db.Decimal(18, 2)
+  rentCurrency String?       @default("GHS") @map("rent_currency") @db.VarChar(3)
+  rentDuration RentDuration? @map("rent_duration")
 
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  leases              Lease[]
+  rules String?
+
+  occupancies         Occupancy[]
   maintenanceRequests MaintenanceRequest[]
   complex             Complex              @relation(fields: [complexId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -79,38 +96,105 @@ model Unit {
   @@map("units")
 }
 
+// Used for prepopulating lease aggrements
+model LeaseTemplate {
+  id        String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  complexId String @map("complex_id") @db.Uuid
+  name      String @db.VarChar(255)
+
+  // Landlord/Manager's details
+  signedBy       String  @map("signed_by") @db.VarChar(255)
+  signerRole     String  @map("signer_role") @db.VarChar(255)
+  signature      Bytes?  @map("signature") // encrypted with PBKDF2
+  signerIdType   IdType? @map("signer_id_type")
+  signerIdNumber String? @map("signer_id_number")
+
+  // Standard terms
+  terms        String?
+  noticePeriod Int?    @default(30) @map("notice_period")
+
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  complex Complex @relation(fields: [complexId], references: [id], onDelete: Cascade)
+
+  @@map("lease_templates")
+}
+
 model Lease {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
 
-  unitId         String       @map("unit_id") @db.Uuid
-  tenantId       String       @map("tenant_id") @db.Uuid
-  staffId        String       @map("staff_id") @db.Uuid
-  startedAt      DateTime     @map("started_at") @db.Timestamptz(6)
-  endsAt         DateTime     @map("ends_at") @db.Timestamptz(6)
-  rentAmount     Decimal      @map("rent_amount") @db.Decimal(18, 2)
-  rentCurrency   String       @default("GHS") @db.VarChar(3)
-  advanceSeconds Int?         @default(0) @map("advance_seconds")
-  documentUrl    String?      @map("document_url")
-  status         LeaseStatus? @default(ACTIVE)
-  rules          String?
-  noticePeriod   Int?         @default(30) @map("notice_period")
-  parentLeaseId  String?      @map("parent_lease_id") @db.Uuid
-  createdAt      DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime?    @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  serial          String @unique
 
-  staff       Staff     @relation(fields: [staffId], references: [id], onUpdate: NoAction)
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onUpdate: NoAction)
-  unit        Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  payments    Payment[]
-  parentLease Lease?    @relation("LeaseRenewals", fields: [parentLeaseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  renewals    Lease[]   @relation("LeaseRenewals")
+  // --- Denormalized Fields for Read-Only History ---
+  propertyName String @map("property_name") @db.VarChar(512) // `[complexName] [unitType] [unitLabel]`
+  tenantName   String @map("tenant_name") @db.VarChar(512)
 
-  @@index([staffId], map: "leases_idx_staff_id")
-  @@index([parentLeaseId], map: "leases_idx_parent_lease_id")
-  @@index([tenantId], map: "leases_idx_tenant_id")
-  @@index([unitId], map: "leases_idx_unit_id")
+  // --- Lease Details (can override template) ---
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt   DateTime @map("ends_at") @db.Timestamptz(6)
+
+  rentAmount   Decimal       @map("rent_amount") @db.Decimal(18, 2) // unit price
+  rentDuration RentDuration? @map("rent_duration")
+  rentCurrency String        @default("GHS") @map("rent_currency") @db.VarChar(3)
+  rentQuotas   Int?          @default(0) @map("rent_quotas") // number of unit durations aggreed on
+
+  // Populated from template at app - level
+  signedBy       String  @map("signed_by") @db.VarChar(255)
+  signerRole     String  @map("signer_role") @db.VarChar(255)
+  signature      Bytes?  @map("signature") // encrypted with PBKDF2
+  signerIdType   IdType? @map("signer_id_type")
+  signerIdNumber String? @map("signer_id_number")
+  // Standard terms
+  terms          String?
+  noticePeriod   Int?    @default(30) @map("notice_period") // needed for lease termination
+
+  // --- Timestamps & Relations ---
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  currentOccupancy  Occupancy? @relation("currentLease") // All leases without a null `currentOccupancy` are considered `Outdated`
+  previousOccupancy Occupancy? @relation("previousLease")
+
   @@map("leases")
+}
+
+model Notification {
+  id      String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId  String @map("user_id") @db.Uuid
+  brief   String @map("brief") @db.VarChar(255) // for titles and stuff
+  message String @map("message") @db.VarChar(1024) // markdown format
+
+  isRead Boolean @default(false) @map("is_read")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model Occupancy {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  unitId   String @map("unit_id") @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  currentLeaseId String @unique @map("current_lease_id") @db.Uuid
+
+  previousLeaseId    String?             @unique @map("previous_lease_id") @db.Uuid
+  leaseExtensionType LeaseExtensionType? @map("lease_extension_type") // Will be non-null when previousLeaseId is non-null
+
+  // --- Relations ---
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  currentLease   Lease     @relation(name: "currentLease", fields: [currentLeaseId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  previousLease  Lease?    @relation(name: "previousLease", fields: [previousLeaseId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  tenantPayments Payment[]
+
+  @@unique([unitId, tenantId])
+  @@map("occupancies")
 }
 
 // ----------------------------------------
@@ -125,21 +209,17 @@ model Staff {
   middleName String? @map("middle_name") @db.VarChar(255)
   phone      String? @db.VarChar(50)
 
-  proofOfOwnership  String?   @map("proof_of_ownership")
-  bankName          String?   @map("bank_name") @db.VarChar(100)
-  bankAccount       String?   @map("bank_account") @db.VarChar(100)
-  mobileMoneyNumber String?   @map("mobile_money_number") @db.VarChar(50)
-  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   userId String @unique @map("user_id") @db.Uuid
   user   User   @relation(fields: [userId], references: [id])
 
-  leases      Lease[]
   assignments ComplexAssignment[]
+  creations   Complex[]
 
-  @@map("staffs")
+  @@map("staff")
 }
 
 model Tenant {
@@ -157,8 +237,8 @@ model Tenant {
 
   userId String? @unique @map("user_id") @db.Uuid
 
-  user   User?   @relation(fields: [userId], references: [id])
-  leases Lease[]
+  user        User?       @relation(fields: [userId], references: [id])
+  occupancies Occupancy[]
 
   @@map("tenants")
 }
@@ -178,10 +258,15 @@ model Vendor {
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
+  bankName          String? @map("bank_name") @db.VarChar(100)
+  bankAccount       String? @map("bank_account") @db.VarChar(100)
+  mobileMoneyNumber String? @map("mobile_money_number") @db.VarChar(50)
+
   userId String? @unique @map("user_id") @db.Uuid
 
   user                User?                @relation(fields: [userId], references: [id])
   maintenanceRequests MaintenanceRequest[]
+  payments            Payment[]
 
   @@map("vendors")
 }
@@ -200,7 +285,7 @@ model ComplexAssignment {
   complex Complex @relation(fields: [complexId], references: [id])
 
   @@unique([staffId, complexId])
-  @@map("complex_managers")
+  @@map("complex_assignments")
 }
 
 // ----------------------------------------
@@ -210,45 +295,51 @@ model ComplexAssignment {
 model Payment {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
 
-  leaseId        String         @map("lease_id") @db.Uuid
-  amount         Decimal        @db.Decimal(18, 2)
-  currency       String         @default("GHS") @db.VarChar(3)
+  amount         Decimal       @db.Decimal(18, 2)
+  currency       String        @default("GHS") @db.VarChar(3)
   type           PaymentType
-  dueDate        DateTime       @map("due_date") @db.Timestamptz(6)
-  paidAt         DateTime?      @default(now()) @map("paid_at") @db.Timestamptz(6)
+  dueDate        DateTime      @map("due_date") @db.Timestamptz(6)
+  paidAt         DateTime?     @default(now()) @map("paid_at") @db.Timestamptz(6)
   method         PaymentMethod
-  paymentStatus  PaymentStatus? @default(PENDING) @map("payment_status")
-  transactionRef String?        @unique @map("transaction_ref") @db.VarChar(255)
-  feeAmount      Decimal?       @map("fee_amount") @db.Decimal(18, 2)
-  receiptUrl     String?        @map("receipt_url") @db.VarChar(1023)
-  createdAt      DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime?      @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt      DateTime?      @map("deleted_at") @db.Timestamptz(6)
+  paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
+  transactionRef String?       @unique @map("transaction_ref") @db.VarChar(255)
+  feeAmount      Decimal?      @map("fee_amount") @db.Decimal(18, 2)
+  receiptUrl     String?       @map("receipt_url") @db.VarChar(1023)
+  createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime?     @map("deleted_at") @db.Timestamptz(6)
 
-  lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  // Types of payments
+  occupancyId String? @map("occupancy_id") @db.Uuid
+  vendorId    String? @map("vendor_id") @db.Uuid
 
-  @@index([leaseId], map: "payments_idx_lease_id")
+  // Relations
+  occupancy Occupancy? @relation(fields: [occupancyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendor    Vendor?    @relation(fields: [vendorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([occupancyId], map: "payments_idx_occupancy_id")
+  @@index([vendorId], map: "payments_idx_vendor_id")
   @@map("payments")
 }
 
 model MaintenanceRequest {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
 
-  unitId         String             @map("unit_id") @db.Uuid
-  creatorId      String             @map("creator_id") @db.Uuid
+  unitId         String            @map("unit_id") @db.Uuid
+  creatorId      String            @map("creator_id") @db.Uuid
   description    String
-  photoUrl       String?            @map("photo_url") @db.VarChar(1023)
-  status         MaintenanceStatus? @default(PENDING)
-  vendorId       String?            @map("vendor_id") @db.Uuid
-  vendorResponse String?            @map("vendor_response")
-  scheduledFor   DateTime?          @map("scheduled_for") @db.Timestamptz(6)
-  completedAt    DateTime?          @map("completed_at") @db.Timestamptz(6)
-  cost           Decimal?           @db.Decimal(18, 2)
-  costCurrency   String?            @default("GHS") @map("cost_currency") @db.VarChar(3)
-  paymentStatus  InvoiceStatus?     @map("payment_status")
-  createdAt      DateTime?          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime?          @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt      DateTime?          @map("deleted_at") @db.Timestamptz(6)
+  photoUrl       String?           @map("photo_url") @db.VarChar(1023)
+  status         MaintenanceStatus @default(PENDING)
+  vendorId       String?           @map("vendor_id") @db.Uuid
+  vendorResponse String?           @map("vendor_response")
+  scheduledFor   DateTime?         @map("scheduled_for") @db.Timestamptz(6)
+  completedAt    DateTime?         @map("completed_at") @db.Timestamptz(6)
+  cost           Decimal?          @db.Decimal(18, 2)
+  costCurrency   String?           @default("GHS") @map("cost_currency") @db.VarChar(3)
+  paymentStatus  InvoiceStatus?    @map("payment_status")
+  createdAt      DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz(6)
 
   creator User    @relation(fields: [creatorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   unit    Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -296,14 +387,6 @@ enum StaffRole {
   REGULAR
 }
 
-enum LeaseStatus {
-  ACTIVE
-  PENDING
-  TERMINATED
-  EXPIRED
-  RENEWED
-}
-
 enum MaintenanceStatus {
   PENDING
   SCHEDULED
@@ -338,4 +421,18 @@ enum UnitType {
   STUDIO
   APARTMENT
   HOUSE
+}
+
+enum RentDuration {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+  SEMESTER
+  ACADEMIC_YEAR
+}
+
+enum LeaseExtensionType {
+  EDIT
+  RENEWAL
 }

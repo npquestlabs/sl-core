@@ -2,14 +2,14 @@ import { prisma } from '../configs/prisma'
 import bcrypt from 'bcryptjs'
 import { AppError, ServerError } from '../util/error'
 import { z } from 'zod'
-import { BaseUserSchema, UpdateUserSchema } from '../schemas/user.schema'
+import { RegisterUserSchema, UpdateUserSchema } from '../schemas/user.schema'
 import { Prisma } from '../../generated/prisma'
 import { sanitizeUser } from '../util'
 import { generateToken } from '../util/token'
 import config from '../configs/environment'
 import jwt from 'jsonwebtoken'
 
-export const createUser = async (data: z.infer<typeof BaseUserSchema>) => {
+export const createUser = async (data: z.infer<typeof RegisterUserSchema>) => {
   if (data.password) {
     data.password = await bcrypt.hash(data.password, 10)
   }

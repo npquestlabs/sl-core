@@ -23,8 +23,18 @@ export default z.object({
   googleClientSecret: z.string({
     required_error: 'GOOGLE CLIENT SECRET is Mandatory',
   }),
-  appEmail: z.string(),
-  appEmailPassword: z.string(),
+  smtpHost: z.string({
+    required_error: 'SMTP HOST is Mandatory',
+  }),
+  smtpUser: z.string({
+    required_error: 'SMTP USER is Mandatory',
+  }).email("Invalid email format"),
+  smtpPass: z.string({
+    required_error: 'SMTP PASSWORD is Mandatory',
+  }),
+  emailer: z.string({
+    required_error: 'EMAILER is Mandatory',
+  }).email("Invalid email format"),
   allowedOrigins: z.array(z.string(), {
     required_error: 'ALLOWED ORIGINS is Mandatory',
   }),

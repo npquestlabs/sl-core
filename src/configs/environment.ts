@@ -10,8 +10,10 @@ const variables = envSchema.parse({
   jwtSecret: process.env.JWT_SECRET,
   googleClientId: process.env.GOOGLE_CLIENT_ID,
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  appEmail: process.env.APP_EMAIL,
-  appEmailPassword: process.env.APP_EMAIL_PASS,
+  smtpHost: process.env.SMTP_HOST,
+  smtpUser: process.env.SMTP_USER,
+  smtpPass: process.env.SMTP_PASS,
+  emailer: process.env.EMAILER,
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') || [],
 })
 

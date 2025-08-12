@@ -1,54 +1,98 @@
-// src/schemas/lease.schema.ts
-import { z } from 'zod'
+import { z } from 'zod';
+import { RentDuration, IdType } from '../../generated/prisma';
 
-// --- Schema for Creating a New Lease ---
+
+export const CreateLeaseTemplateSchema = z.object({
+  name: z.string().min(1, { message: 'Template name is required' }),
+
+  signedBy: z.string().min(1, { message: 'Signer name is required' }),
+  signerRole: z.string().min(1, { message: 'Signer role is required' }),
+
+  signature: z.string().optional(),
+  signerIdType: z.nativeEnum(IdType).optional(),
+  signerIdNumber: z.string().optional(),
+
+  terms: z.string().optional(),
+  noticePeriod: z.number().int().positive().optional().default(30),
+});
+
+export const UpdateLeaseTemplateSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    signedBy: z.string().min(1).optional(),
+    signerRole: z.string().min(1).optional(),
+    signature: z.string().optional(),
+    signerIdType: z.nativeEnum(IdType).optional(),
+    signerIdNumber: z.string().optional(),
+    terms: z.string().optional(),
+    noticePeriod: z.number().int().positive().optional(),
+  })
+  .refine((obj) => Object.keys(obj).length > 0, {
+    message: 'At least one field is required for an update',
+  });
+
 export const CreateLeaseSchema = z
   .object({
-    unitId: z
-      .string({ required_error: 'Unit ID is required' })
-      .cuid2({ message: 'Invalid Unit ID format' }),
-    tenantId: z
-      .string({ required_error: 'Tenant ID is required' })
-      .cuid2({ message: 'Invalid Tenant ID format' }),
-    startedAt: z.coerce.date({
-      // coerce attempts to convert string/number to Date
-      required_error: 'Start date is required',
-      invalid_type_error: 'Invalid start date format',
-    }),
-    endsAt: z.coerce.date({
-      required_error: 'End date is required',
-      invalid_type_error: 'Invalid end date format',
-    }),
-    advanceSeconds: z
-      .number({ required_error: 'Advance seconds is required' })
-      .int({ message: 'Advance seconds must be an integer' })
-      .nonnegative({ message: 'Advance seconds cannot be negative' }),
-    // Rent amount fetched from Unit, Currency hardcoded to GHS (as per original code)
-    noticePeriod: z
-      .number({ required_error: 'Notice period is required' })
-      .int({ message: 'Notice period must be an integer' })
-      .positive({ message: 'Notice period must be positive' }),
-    rules: z.string().optional(), // Optional lease rules text
+    unitId: z.string().uuid({ message: 'Invalid Unit ID format' }),
+    tenantId: z.string().uuid({ message: 'Invalid Tenant ID format' }),
+    templateId: z.string().uuid({ message: 'A valid Lease Template ID is required' }),
+
+    startsAt: z.coerce.date({ required_error: 'Start date is required' }),
+    endsAt: z.coerce.date({ required_error: 'End date is required' }),
   })
-  .refine((data) => data.endsAt > data.startedAt, {
+  .refine((data) => data.endsAt > data.startsAt, {
     message: 'End date must be after start date',
-    path: ['endsAt'], // Point error to the endsAt field
+    path: ['endsAt'],
+  });
+
+export const EditLeaseSchema = z
+  .object({
+    startsAt: z.coerce.date().optional(),
+    endsAt: z.coerce.date().optional(),
+    rentAmount: z.number().positive().optional(),
+    rentDuration: z.nativeEnum(RentDuration).optional(),
+    rentCurrency: z.string().optional(),
+    rentQuotas: z.number().int().positive().optional(),
+    noticePeriod: z.number().int().positive().optional(),
+    terms: z.string().optional(),
   })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided to edit the lease',
+  })
+  .refine((data) => {
+      if (data.startsAt && data.endsAt) {
+        return data.endsAt > data.startsAt;
+      }
+      return true;
+    }, {
+      message: 'End date must be after start date',
+      path: ['endsAt'],
+    });
 
-// --- Schema for Renewing an Existing Lease ---
-export const RenewLeaseSchema = z.object({
-  // unitId, tenantId, staffId, rentAmount, currency, noticePeriod are derived from the existing lease
-  newEndsAt: z.coerce.date({
-    required_error: 'New end date is required',
-    invalid_type_error: 'Invalid new end date format',
-  }),
-  advanceSeconds: z
-    .number({ required_error: 'Advance seconds is required' })
-    .int({ message: 'Advance seconds must be an integer' })
-    .nonnegative({ message: 'Advance seconds cannot be negative' }),
-  rules: z.string().optional(), // Optional updated lease rules text
-})
+export const RenewLeaseSchema = z
+  .object({
+    occupancyId: z.string().uuid({ message: 'Invalid Occupancy ID format' }),
+    newStartsAt: z.coerce.date({ required_error: 'New start date is required' }),
+    newEndsAt: z.coerce.date({ required_error: 'New end date is required' }),
 
-// Optional: Define the type for better type safety in services
-export type CreateLeaseInput = z.infer<typeof CreateLeaseSchema>
-export type RenewLeaseInput = z.infer<typeof RenewLeaseSchema>
+    // Optional overrides for the new lease
+    rentAmount: z.number().positive().optional(),
+    rentDuration: z.nativeEnum(RentDuration).optional(),
+    rentCurrency: z.string().optional(),
+    rentQuotas: z.number().int().positive().optional(),
+    noticePeriod: z.number().int().positive().optional(),
+    terms: z.string().optional(),
+  })
+  .refine((data) => data.newEndsAt > data.newStartsAt, {
+    message: 'New end date must be after new start date',
+    path: ['newEndsAt'],
+  });
+
+
+// --- Exported Types ---
+// ADDED: Exported types for the new template schemas.
+export type CreateLeaseTemplateInput = z.infer<typeof CreateLeaseTemplateSchema>;
+export type UpdateLeaseTemplateInput = z.infer<typeof UpdateLeaseTemplateSchema>;
+export type CreateLeaseInput = z.infer<typeof CreateLeaseSchema>;
+export type RenewLeaseInput = z.infer<typeof RenewLeaseSchema>;
+export type EditLeaseInput = z.infer<typeof EditLeaseSchema>;

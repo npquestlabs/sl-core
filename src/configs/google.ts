@@ -31,7 +31,9 @@ const clients = envConfig.allowedOrigins
 
 class GoogleAuthConfig {
   getClient(origin: string) {
-    return clients[origin] ?? null
+    const client = clients[origin]
+    if (!client) return null
+    return client
   }
 }
 const googleAuthConfig = new GoogleAuthConfig()

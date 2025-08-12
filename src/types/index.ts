@@ -15,7 +15,7 @@ export type PaginatedResponse<T> = {
 export type StaffSummary = {
   totalComplexes: number
   totalUnits: number
-  activeTenants: number
-  unitsWithExpiredLeases: number
+  activeTenancies: number
+  expiredLeasesCount: number
   pendingMaintenanceRequests: number
 }

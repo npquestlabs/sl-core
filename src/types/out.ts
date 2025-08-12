@@ -1,11 +1,9 @@
 import {
   UnitType,
-  LeaseStatus,
   MaintenanceStatus,
   StaffRole,
+  RentDuration,
 } from '../../generated/prisma'
-
-// --- Complex Types ---
 
 export type ListedComplex = {
   id: string
@@ -50,6 +48,7 @@ export type DetailedComplex = {
   }[]
 }
 
+// --- Staff Types ---
 export type ListedStaff = {
   id: string
   firstName: string
@@ -57,6 +56,7 @@ export type ListedStaff = {
   user: { avatarUrl: string | null }
 }
 
+// --- Unit Types ---
 export type ListedUnit = {
   id: string
   label: string
@@ -67,7 +67,7 @@ export type ListedUnit = {
     id: string
     name: string
   }
-  leaseStatus: LeaseStatus | null
+  leaseStatus: 'ACTIVE' | 'EXPIRED' | 'PENDING' | null
   _count: {
     maintenanceRequests: number
   }
@@ -90,8 +90,7 @@ export type DetailedUnit = {
   notes: string | null
   rentAmount: string | null
   rentCurrency: string | null
-  rentDuration: number | null
-  rentUnit: string | null
+  rentDuration: RentDuration | null
   complex: {
     id: string
     name: string
@@ -105,9 +104,8 @@ export type DetailedUnit = {
 
 type ActiveLease = {
   id: string
-  startedAt: Date
+  startsAt: Date
   endsAt: Date
-  status: LeaseStatus | null
   tenant: {
     id: string
     firstName: string
