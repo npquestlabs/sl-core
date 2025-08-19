@@ -35,7 +35,7 @@ model User {
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  @@index([email], map: "users_idx_email")
+  @@index([email])
   @@map("users")
 }
 
@@ -51,21 +51,29 @@ model Complex {
 
   logoUrl String? @map("logo_url")
 
+  // for accepting tenant payments
   bankName          String? @map("bank_name") @db.VarChar(100)
   bankAccount       String? @map("bank_account") @db.VarChar(100)
   mobileMoneyNumber String? @map("mobile_money_number") @db.VarChar(50)
 
-  createdBy String @db.Uuid
+  subscriptionId String? @map("subscription_id") @db.Uuid
+
+  createdBy String @map("created_by") @db.Uuid
 
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  creator        Staff               @relation(fields: [createdBy], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  creator      Staff         @relation(fields: [createdBy], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   units          Unit[]
   assignments    ComplexAssignment[]
   leaseTemplates LeaseTemplate[]
+  listing        Listing?
 
+  @@index([createdBy])
+  @@index([subscriptionId])
   @@map("complexes")
 }
 
@@ -91,8 +99,9 @@ model Unit {
   occupancies         Occupancy[]
   maintenanceRequests MaintenanceRequest[]
   complex             Complex              @relation(fields: [complexId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  listing             Listing?
 
-  @@index([complexId], map: "units_idx_complex_id")
+  @@index([complexId])
   @@map("units")
 }
 
@@ -117,15 +126,17 @@ model LeaseTemplate {
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  complex Complex @relation(fields: [complexId], references: [id], onDelete: Cascade)
+  complex     Complex     @relation(fields: [complexId], references: [id], onDelete: Cascade)
+  occupancies Occupancy[]
 
+  @@index([complexId])
   @@map("lease_templates")
 }
 
 model Lease {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
 
-  serial          String @unique
+  serial String @unique
 
   // --- Denormalized Fields for Read-Only History ---
   propertyName String @map("property_name") @db.VarChar(512) // `[complexName] [unitType] [unitLabel]`
@@ -180,20 +191,36 @@ model Occupancy {
   unitId   String @map("unit_id") @db.Uuid
   tenantId String @map("tenant_id") @db.Uuid
 
-  currentLeaseId String @unique @map("current_lease_id") @db.Uuid
+  leaseTemplateId String? @map("lease_template_id") @db.Uuid // Tenant previews this before agreeing
+
+  currentLeaseId String? @unique @map("current_lease_id") @db.Uuid // After the tenant signs the lease
+
+  // checking out a tenant involves setting previousLeaseId = currentLeaseId then currentLeaseId = null
+  // ensuring that non-null currentLease means the tenant has not checked out (though lease may be expired)
+
+
+  // For new tenants checking in, depending on the complex's `preferences` may be immediately added here with a null currentLease 
+  // Wait for first payment before lease is served (formally starting the rental) or grant lease before accepting payments
+
+  // checking in will involve converting the leaseTemplate into a currentLease (or creating a new template first if null)
 
   previousLeaseId    String?             @unique @map("previous_lease_id") @db.Uuid
   leaseExtensionType LeaseExtensionType? @map("lease_extension_type") // Will be non-null when previousLeaseId is non-null
 
   // --- Relations ---
-  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  unit          Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  leaseTemplate LeaseTemplate? @relation(fields: [leaseTemplateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  currentLease   Lease     @relation(name: "currentLease", fields: [currentLeaseId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  currentLease   Lease?    @relation(name: "currentLease", fields: [currentLeaseId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   previousLease  Lease?    @relation(name: "previousLease", fields: [previousLeaseId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   tenantPayments Payment[]
 
   @@unique([unitId, tenantId])
+  @@index([unitId])
+  @@index([tenantId])
+  @@index([currentLeaseId])
+  @@index([previousLeaseId])
   @@map("occupancies")
 }
 
@@ -219,6 +246,7 @@ model Staff {
   assignments ComplexAssignment[]
   creations   Complex[]
 
+  @@index([userId])
   @@map("staff")
 }
 
@@ -240,6 +268,7 @@ model Tenant {
   user        User?       @relation(fields: [userId], references: [id])
   occupancies Occupancy[]
 
+  @@index([userId])
   @@map("tenants")
 }
 
@@ -266,8 +295,8 @@ model Vendor {
 
   user                User?                @relation(fields: [userId], references: [id])
   maintenanceRequests MaintenanceRequest[]
-  payments            Payment[]
 
+  @@index([userId])
   @@map("vendors")
 }
 
@@ -285,42 +314,14 @@ model ComplexAssignment {
   complex Complex @relation(fields: [complexId], references: [id])
 
   @@unique([staffId, complexId])
+  @@index([staffId])
+  @@index([complexId])
   @@map("complex_assignments")
 }
 
 // ----------------------------------------
 // Transactional & Utility Models
 // ----------------------------------------
-
-model Payment {
-  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-
-  amount         Decimal       @db.Decimal(18, 2)
-  currency       String        @default("GHS") @db.VarChar(3)
-  type           PaymentType
-  dueDate        DateTime      @map("due_date") @db.Timestamptz(6)
-  paidAt         DateTime?     @default(now()) @map("paid_at") @db.Timestamptz(6)
-  method         PaymentMethod
-  paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
-  transactionRef String?       @unique @map("transaction_ref") @db.VarChar(255)
-  feeAmount      Decimal?      @map("fee_amount") @db.Decimal(18, 2)
-  receiptUrl     String?       @map("receipt_url") @db.VarChar(1023)
-  createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime?     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt      DateTime?     @map("deleted_at") @db.Timestamptz(6)
-
-  // Types of payments
-  occupancyId String? @map("occupancy_id") @db.Uuid
-  vendorId    String? @map("vendor_id") @db.Uuid
-
-  // Relations
-  occupancy Occupancy? @relation(fields: [occupancyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  vendor    Vendor?    @relation(fields: [vendorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([occupancyId], map: "payments_idx_occupancy_id")
-  @@index([vendorId], map: "payments_idx_vendor_id")
-  @@map("payments")
-}
 
 model MaintenanceRequest {
   id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
@@ -334,9 +335,7 @@ model MaintenanceRequest {
   vendorResponse String?           @map("vendor_response")
   scheduledFor   DateTime?         @map("scheduled_for") @db.Timestamptz(6)
   completedAt    DateTime?         @map("completed_at") @db.Timestamptz(6)
-  cost           Decimal?          @db.Decimal(18, 2)
-  costCurrency   String?           @default("GHS") @map("cost_currency") @db.VarChar(3)
-  paymentStatus  InvoiceStatus?    @map("payment_status")
+  estimate       String?
   createdAt      DateTime?         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime?         @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz(6)
@@ -345,22 +344,111 @@ model MaintenanceRequest {
   unit    Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendor  Vendor? @relation(fields: [vendorId], references: [id], onUpdate: NoAction)
 
-  @@index([creatorId], map: "maintenance_requests_idx_creator_id")
-  @@index([unitId], map: "maintenance_requests_idx_unit_id")
-  @@index([vendorId], map: "maintenance_requests_idx_vendor_id")
+  payments Payment[]
+
+  @@index([creatorId])
+  @@index([unitId])
+  @@index([vendorId])
   @@map("maintenance_requests")
 }
+
+// For payments between different user types
+
+// For digital transactions
+model FinancialTransaction {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  srcInformation String @map("src_information") @db.VarChar(255)
+  dstInformation String @map("dst_information") @db.VarChar(255)
+
+  amount         Decimal       @db.Decimal(18, 2)
+  currency       String        @default("GHS") @db.VarChar(3)
+
+  createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+}
+
+model Payment {
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  
+
+  amount         Decimal       @db.Decimal(18, 2)
+  currency       String        @default("GHS") @db.VarChar(3)
+  dueDate        DateTime      @map("due_date") @db.Timestamptz(6)
+  paidAt         DateTime?     @default(now()) @map("paid_at") @db.Timestamptz(6)
+  method         PaymentMethod
+  paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
+  transactionRef String?       @unique @map("transaction_ref") @db.VarChar(255)
+  feeAmount      Decimal?      @map("fee_amount") @db.Decimal(18, 2)
+  receiptUrl     String?       @map("receipt_url") @db.VarChar(1023)
+  createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime?     @map("deleted_at") @db.Timestamptz(6)
+
+  // Types of payments
+  occupancyId   String? @map("occupancy_id") @db.Uuid
+  maintenanceId String? @map("maintenance_id") @db.Uuid
+
+  // Relations
+  occupancy   Occupancy?          @relation(fields: [occupancyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  maintenance MaintenanceRequest? @relation(fields: [maintenanceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([occupancyId])
+  @@index([maintenanceId])
+  @@map("payments")
+}
+
+// App-Related
 
 model Otp {
   id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   email     String   @db.VarChar(255)
   otp       String   @db.VarChar(10)
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  expiresAt DateTime @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
   used      Boolean  @default(false)
 
-  @@index([email], map: "otp_idx_email")
+  @@index([email])
   @@map("otps")
+}
+
+model Listing {
+  id          String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title       String  @db.VarChar(255)
+  description String? @db.Text
+  photoUrl    String? @map("photo_url") @db.VarChar(1023) //Later we'll use a separate model for multiple photos
+
+  // --- Relations --- A single unit or a complex may be listed
+  unitId String? @unique @map("unit_id") @db.Uuid
+  unit   Unit?   @relation(fields: [unitId], references: [id])
+
+  complexId String?  @unique @map("complex_id") @db.Uuid
+  complex   Complex? @relation(fields: [complexId], references: [id])
+
+  isVerified Boolean   @default(false) @map("is_verified")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6) // for app-level disabling from listings
+
+  @@index([unitId])
+  @@index([complexId])
+  @@map("listings")
+}
+
+model Subscription {
+  id         String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  tier       SubscriptionTier // Extra features
+  cardNumber String           @map("card_number")
+  cardType   String           @map("card_type")
+
+  renewedAt DateTime @map("renewed_at")
+  createdAt DateTime @map("created_at")
+
+  complexes Complex[] // Extra features apply to a max number of complexes or unlimited for the best tier
+
+  @@index([userId])
+  @@map("subscriptions")
 }
 
 // ----------------------------------------
@@ -372,13 +460,6 @@ enum IdType {
   PASSPORT
   DRIVER_LICENSE
   GH_CARD
-}
-
-enum InvoiceStatus {
-  PENDING
-  PAID
-  OVERDUE
-  CANCELED
 }
 
 enum StaffRole {
@@ -399,21 +480,14 @@ enum PaymentMethod {
   MOBILE_MONEY
   BANK_TRANSFER
   CARD
-  CASH
+  OFFLINE
 }
 
 enum PaymentStatus {
   PENDING
   COMPLETED
   FAILED
-  REFUNDED
-}
-
-enum PaymentType {
-  RENT
-  UTILITY
-  MAINTENANCE
-  DEPOSIT
+  REVERSED
 }
 
 enum UnitType {
@@ -436,3 +510,11 @@ enum LeaseExtensionType {
   EDIT
   RENEWAL
 }
+
+enum SubscriptionTier {
+  // No subscription means free tier
+  Basic // We'll define extra features on top of the free tier and special restrictions that apply to it
+  Advanced // Basically unlimited stuff
+}
+
+// But honestly we'll later migrate independent features like listing, subscriptions, etc into communicating microservices to allow for scalability

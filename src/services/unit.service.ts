@@ -94,17 +94,17 @@ export async function getUnitsInComplex(
   complexId: string,
   pagination: z.infer<typeof PaginationSchema>,
 ): Promise<PaginatedResponse<Prisma.UnitGetPayload<Record<string, never>>>> {
-  const { page, limit, filter } = pagination;
+  const { page, limit, search } = pagination;
 
   const whereClause: Prisma.UnitWhereInput = {
     complexId: complexId,
     deletedAt: null,
   };
 
-  if (filter) {
+  if (search) {
     whereClause.OR = [
-      { label: { contains: filter, mode: 'insensitive' } },
-      { description: { contains: filter, mode: 'insensitive' } },
+      { label: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
     ];
   }
 
@@ -130,11 +130,11 @@ export async function getUnitsOfTenant(
   tenantId: string,
   pagination: z.infer<typeof PaginationSchema>,
 ): Promise<PaginatedResponse<Prisma.UnitGetPayload<Record<string, never>>>> {
-  const { page, limit, filter } = pagination;
+  const { page, limit, search } = pagination;
   const now = new Date();
 
   // The relational path to a tenant has changed.
-  // We now filter units that have an 'occupancy' by the tenant with an 'active' lease.
+  // We now search units that have an 'occupancy' by the tenant with an 'active' lease.
   const whereClause: Prisma.UnitWhereInput = {
     deletedAt: null,
     occupancies: {
@@ -150,16 +150,16 @@ export async function getUnitsOfTenant(
     },
   };
 
-  if (filter) {
+  if (search) {
     // The filter logic needs to apply within the same structure.
     whereClause.AND = [
       {
         OR: [
-          { label: { contains: filter, mode: 'insensitive' } },
-          { description: { contains: filter, mode: 'insensitive' } },
+          { label: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
           {
             complex: {
-              name: { contains: filter, mode: 'insensitive' },
+              name: { contains: search, mode: 'insensitive' },
               deletedAt: null,
             },
           },
@@ -190,7 +190,7 @@ export async function getStaffUnits(
   staffId: string,
   pagination: z.infer<typeof PaginationSchema>,
 ): Promise<PaginatedResponse<ListedUnit>> {
-  const { page, limit, filter } = pagination;
+  const { page, limit, search } = pagination;
   const now = new Date();
 
   const whereClause: Prisma.UnitWhereInput = {
@@ -205,11 +205,11 @@ export async function getStaffUnits(
     },
   };
 
-  if (filter) {
+  if (search) {
     whereClause.OR = [
-      { label: { contains: filter, mode: 'insensitive' } },
-      { description: { contains: filter, mode: 'insensitive' } },
-      { complex: { name: { contains: filter, mode: 'insensitive' } } },
+      { label: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
+      { complex: { name: { contains: search, mode: 'insensitive' } } },
     ];
   }
 

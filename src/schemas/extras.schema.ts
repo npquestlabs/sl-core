@@ -15,7 +15,8 @@ export const PaginationSchema = z.object({
     .refine((val) => !isNaN(val) && val > 0, {
       message: 'Page must be a positive number',
     }),
-  filter: z.string().max(99, 'Filter text too long').optional(),
+    search: z.string().max(99, 'Search text too long').optional(),
+  filter: z.record(z.any()).optional(),
   order: z.record(z.enum(['asc', 'desc'])).optional(),
 })
 

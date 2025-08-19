@@ -87,12 +87,3 @@ export const RenewLeaseSchema = z
     message: 'New end date must be after new start date',
     path: ['newEndsAt'],
   });
-
-
-// --- Exported Types ---
-// ADDED: Exported types for the new template schemas.
-export type CreateLeaseTemplateInput = z.infer<typeof CreateLeaseTemplateSchema>;
-export type UpdateLeaseTemplateInput = z.infer<typeof UpdateLeaseTemplateSchema>;
-export type CreateLeaseInput = z.infer<typeof CreateLeaseSchema>;
-export type RenewLeaseInput = z.infer<typeof RenewLeaseSchema>;
-export type EditLeaseInput = z.infer<typeof EditLeaseSchema>;

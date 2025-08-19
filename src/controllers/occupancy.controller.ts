@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response } from 'express'
-import * as leaseService from '../services/lease.service'
-import { CreateLeaseSchema, RenewLeaseSchema } from '../schemas/lease.schema'
+import * as occupancyService from '../services/occupancy.service'
+import { CreateLeaseSchema } from '../schemas/lease.schema'
 import { AppError } from '../util/error'
 
 /**
@@ -16,7 +17,7 @@ export const createLease = async (req: Request, res: Response) => {
   }
 
   const input = CreateLeaseSchema.parse(req.body)
-  const lease = await leaseService.createLease(user.staff.id, input)
+  const lease = await occupancyService.createOccupancy(user.staff.id, input)
 
   return res.status(201).json(lease)
 }
@@ -25,7 +26,7 @@ export const createLease = async (req: Request, res: Response) => {
  * Handles the renewal of an existing lease.
  * Requires the user to be an authenticated staff member with access to the lease's complex.
  */
-export const renewLease = async (req: Request, res: Response) => {
+export const renewOccupancy = async (req: Request, res: Response) => {
   const user = req.user
   if (!user?.staff) {
     return res
@@ -33,13 +34,11 @@ export const renewLease = async (req: Request, res: Response) => {
       .json({ error: 'Permission denied: Staff access required' })
   }
 
-  const { leaseId } = req.params
-  const input = RenewLeaseSchema.parse(req.body)
+  const { complexId, unitId } = req.params
 
-  const renewedLease = await leaseService.renewLease(
-    leaseId,
-    user.staff.id,
-    input,
+  const renewedLease = await occupancyService.renewOccupancy(
+    { staffId: user.staff.id, unitId, complexId },
+    req.body as unknown as any,
   )
 
   return res.status(200).json(renewedLease)
@@ -56,7 +55,7 @@ export const listStaffLeases = async (req: Request, res: Response) => {
       .json({ error: 'Permission denied: Staff access required' })
   }
 
-  const leases = await leaseService.listLeasesForStaff(user.staff.id)
+  const leases = await occupancyService.listLeasesForStaff(user.staff.id, req.query as any)
 
   return res.status(200).json(leases)
 }
@@ -73,7 +72,7 @@ export const getLease = async (req: Request, res: Response) => {
 
   const { leaseId } = req.params
 
-  const lease = await leaseService.getLeaseDetails(leaseId)
+  const lease = await occupancyService.getLeaseDetails(leaseId)
 
   // Security check: Verify the user is either the assigned staff or the tenant
   const isStaff = user.staff?.id === lease.staffId

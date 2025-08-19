@@ -80,7 +80,7 @@ export async function getStaffComplexes(
   staffId: string,
   pagination: z.infer<typeof PaginationSchema>,
 ): Promise<PaginatedResponse<ListedComplex>> {
-  const { page, limit, filter } = pagination
+  const { page, limit, search } = pagination
 
   const whereClause: Prisma.ComplexWhereInput = {
     deletedAt: null,
@@ -91,12 +91,12 @@ export async function getStaffComplexes(
     },
   }
 
-  if (filter) {
+  if (search) {
     whereClause.OR = [
-      { name: { contains: filter, mode: 'insensitive' } },
-      { description: { contains: filter, mode: 'insensitive' } },
-      { cityName: { contains: filter, mode: 'insensitive' } },
-      { address: { contains: filter, mode: 'insensitive' } },
+      { name: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
+      { cityName: { contains: search, mode: 'insensitive' } },
+      { address: { contains: search, mode: 'insensitive' } },
     ]
   }
 

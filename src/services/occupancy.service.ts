@@ -4,6 +4,7 @@ import { AppError } from '../util/error'
 import { CreateLeaseSchema, EditLeaseSchema, RenewLeaseSchema } from '../schemas/lease.schema'
 import { LeaseExtensionType, Prisma } from '../../generated/prisma'
 import { generateSerial } from '@/util'
+import { PaginationSchema } from '@/schemas/extras.schema'
 
 // don't edit this one
 export const createOccupancy = async (
@@ -153,9 +154,7 @@ export const editLease = async (
   return getLeaseDetails(correctedLease.id);
 };
 
-//fix this one too
-export const renewLease = async (
-  staffId: string,
+export const renewOccupancy = async ({ staffId, complexId, unitId }: { staffId: string, complexId: string, unitId: string },
   input: z.infer<typeof RenewLeaseSchema>,
 ) => {
   const { occupancyId, newStartsAt, newEndsAt, ...leaseOverrides } = input
@@ -165,7 +164,8 @@ export const renewLease = async (
     const occupancyToRenew = await tx.occupancy.findFirst({
       where: {
         id: occupancyId,
-        unit: { complex: { assignments: { some: { staffId } } } },
+        unitId,
+        unit: { complexId, complex: { assignments: { some: { staffId } } } },
       },
       include: {
         currentLease: true,
@@ -247,7 +247,10 @@ export const getLeaseDetails = async (leaseId: string) => {
 /**
  * REFACTORED: Lists leases by querying through the occupancy relationship.
  */
-export const listLeasesForStaff = async (staffId: string) => {
+export const listLeasesForStaff = async (staffId: string,
+  pagination: z.infer<typeof PaginationSchema>) => {
+    
+  const { page, limit } = pagination
   const leases = await prisma.lease.findMany({
     where: {
       deletedAt: null,
@@ -273,6 +276,8 @@ export const listLeasesForStaff = async (staffId: string) => {
     orderBy: {
       createdAt: 'desc',
     },
+    take: limit,
+      skip: (page - 1) * limit,
   })
 
   return leases
